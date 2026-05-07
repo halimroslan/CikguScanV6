@@ -1,6 +1,6 @@
 import './index.css';
 import { initializeApp } from "firebase/app";
-import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged } from "firebase/auth";
+import { getAuth, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged } from "firebase/auth";
 import firebaseConfig from "../firebase-applet-config.json";
 
 // Initialize Firebase
@@ -146,8 +146,6 @@ function checkAuth(user: any) {
         document.getElementById('auth-view')!.classList.remove('hidden');
         document.getElementById('auth-view')!.classList.add('flex');
         document.getElementById('main-app-view')!.classList.add('hidden');
-        (document.getElementById('auth-email') as HTMLInputElement).value = '';
-        (document.getElementById('auth-password') as HTMLInputElement).value = '';
     }
 }
 
@@ -155,42 +153,27 @@ onAuthStateChanged(auth, (user) => {
     checkAuth(user);
 });
 
-function toggleAuthMode() {
-    window.isLoginMode = !window.isLoginMode;
-    document.getElementById('auth-title')!.innerText = window.isLoginMode ? "Log Masuk" : "Daftar Akaun";
-    document.getElementById('auth-subtitle')!.innerText = window.isLoginMode ? "Sila masukkan e-mel dan kata laluan anda." : "E-mel ini akan digunakan untuk log masuk.";
-    document.getElementById('auth-btn')!.innerText = window.isLoginMode ? "Log Masuk" : "Daftar";
-    document.getElementById('auth-toggle-btn')!.innerText = window.isLoginMode ? "Belum ada akaun? Daftar percuma." : "Sudah ada akaun? Log masuk di sini.";
-}
-document.getElementById('auth-toggle-btn')!.addEventListener('click', toggleAuthMode);
-
-async function handleAuth(e: any) {
-    e.preventDefault();
-    let email = (document.getElementById('auth-email') as HTMLInputElement).value.trim().toLowerCase();
-    let pass = (document.getElementById('auth-password') as HTMLInputElement).value;
-    let btn = document.getElementById('auth-btn')!;
-
-    let textAsal = btn.innerText;
-    btn.innerText = "Pengesahan...";
-    (btn as any).disabled = true;
+async function handleGoogleAuth() {
+    let btn = document.getElementById('auth-google-btn')!;
+    let textAsal = btn.innerHTML;
+    btn.innerHTML = `<svg class="animate-spin h-5 w-5 text-gray-700" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Log Masuk...`;
+    (btn as HTMLButtonElement).disabled = true;
     btn.classList.add('opacity-50', 'cursor-not-allowed');
 
     try {
-        if (window.isLoginMode) {
-            await signInWithEmailAndPassword(auth, email, pass);
-        } else {
-            await createUserWithEmailAndPassword(auth, email, pass);
-            paparAlert("Pendaftaran Berjaya!", "Akaun anda telah didaftarkan.");
-        }
+        const provider = new GoogleAuthProvider();
+        await signInWithPopup(auth, provider);
     } catch (error: any) {
-        paparAlert(window.isLoginMode ? "Log Masuk Gagal" : "Pendaftaran Gagal", error.message);
+        if (error.code !== 'auth/popup-closed-by-user') {
+            paparAlert("Log Masuk Gagal", error.message);
+        }
     } finally {
-        btn.innerText = textAsal;
-        (btn as any).disabled = false;
+        btn.innerHTML = textAsal;
+        (btn as HTMLButtonElement).disabled = false;
         btn.classList.remove('opacity-50', 'cursor-not-allowed');
     }
 }
-document.getElementById('auth-form')!.addEventListener('submit', handleAuth);
+document.getElementById('auth-google-btn')!.addEventListener('click', handleGoogleAuth);
 
 document.getElementById('btn-logout')!.addEventListener('click', () => {
     paparConfirm("Log Keluar", "Adakah cikgu pasti mahu log keluar dari sistem CikguScan?", () => {
