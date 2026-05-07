@@ -1,0 +1,111 @@
+@import "tailwindcss";
+
+@theme {
+    --font-sans: "Inter", sans-serif;
+    --color-apple-bg: #f5f5f7;
+    --color-apple-text: #1d1d1f;
+    --color-apple-textMuted: #86868b;
+    --color-apple-blue: #0071e3;
+    --color-apple-blueHover: #0077ed;
+    --color-apple-card: #ffffff;
+    --color-apple-border: #d2d2d7;
+    --shadow-apple: 0 4px 24px rgba(0,0,0,0.04);
+    --shadow-apple-sm: 0 2px 8px rgba(0,0,0,0.04);
+}
+
+body {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+::-webkit-scrollbar {
+    width: 8px;
+}
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+::-webkit-scrollbar-thumb {
+    background: #d2d2d7;
+    border-radius: 10px;
+}
+
+@media print {
+    body {
+        background-color: white !important;
+    }
+    
+    header, nav, .no-print, .apple-segmented-control, #auth-view {
+        display: none !important;
+    }
+
+    /* Default Print (Borang OMR) */
+    body:not(.mode-cetak-skema):not(.mode-cetak-analisis) #tab-skema,
+    body:not(.mode-cetak-skema):not(.mode-cetak-analisis) #tab-imbas,
+    body:not(.mode-cetak-skema):not(.mode-cetak-analisis) #tab-keputusan,
+    body:not(.mode-cetak-skema):not(.mode-cetak-analisis) #tab-analisis,
+    body:not(.mode-cetak-skema):not(.mode-cetak-analisis) #cetakan-analisis-container {
+        display: none !important;
+    }
+    body:not(.mode-cetak-skema):not(.mode-cetak-analisis) #tab-cetak {
+        display: block !important;
+        visibility: visible !important;
+    }
+
+    /* Mod Cetak Skema */
+    body.mode-cetak-skema #tab-cetak,
+    body.mode-cetak-skema #tab-imbas,
+    body.mode-cetak-skema #tab-keputusan,
+    body.mode-cetak-skema #tab-analisis,
+    body.mode-cetak-skema #cetakan-analisis-container,
+    body.mode-cetak-skema button,
+    body.mode-cetak-skema .bg-apple-bg,
+    body.mode-cetak-skema h2.tajuk-skema,
+    body.mode-cetak-skema #borang-skema {
+        display: none !important;
+    }
+    body.mode-cetak-skema #tab-skema {
+        display: block !important;
+    }
+    body.mode-cetak-skema #cetakan-skema-omr-container {
+        display: block !important;
+        visibility: visible !important;
+    }
+
+    /* Mod Cetak Analisis */
+    body.mode-cetak-analisis #tab-cetak,
+    body.mode-cetak-analisis #tab-imbas,
+    body.mode-cetak-analisis #tab-keputusan,
+    body.mode-cetak-analisis #tab-analisis,
+    body.mode-cetak-analisis #tab-skema {
+        display: none !important;
+    }
+    body.mode-cetak-analisis #cetakan-analisis-container {
+        display: block !important;
+        visibility: visible !important;
+    }
+    body.mode-cetak-analisis .print-page-break { page-break-before: always; }
+    body.mode-cetak-analisis table { width: 100% !important; border-collapse: collapse !important; }
+    body.mode-cetak-analisis th, body.mode-cetak-analisis td { border: 1px solid #d2d2d7 !important; padding: 8px !important; }
+    body.mode-cetak-analisis .border-b, body.mode-cetak-analisis .border-r { border-color: #d2d2d7 !important; }
+
+    .max-w-2xl, main, .min-h-screen, .apple-card {
+        max-width: 100% !important;
+        min-height: auto !important;
+        height: auto !important;
+        overflow: visible !important;
+        box-shadow: none !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        background: transparent !important;
+        border-radius: 0 !important;
+    }
+    
+    * {
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+        font-family: 'Inter', sans-serif !important;
+    }
+    .marker-corner {
+        background-color: black !important;
+    }
+}
