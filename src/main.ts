@@ -24,6 +24,20 @@ window.senaraiRekodKelas = [];
 window.idUntukGanti = null; 
 window.idRekodSemasa = null; 
 
+const CONFIG_IMBASAN = {
+    // 1. Parameter Kamera & Bingkai
+    bingkaiSabar: 7, // Bilangan bingkai yg ditunggu sebelum auto-snap utk elak motion blur.
+    
+    // 2. Parameter Pengesanan Segi Empat (Marker)
+    ambangMarkerHitam: 0.70, // 70% dari nilai kertas putih (paper brightness) sebagai had piksel tu dikira gelap.
+    nisbahPikselMarker: 0.23, // Mesti sekurang-kurangnya 23% dari kotak marker wujud piksel hitam/hitam pudar.
+
+    // 3. Parameter Analisis Bulatan Jawapan (OMR)
+    radiusImbasan: 0.55, // 55% jejari akan diimbas dari setiap tanda bulat. Lebih besar = makin senang nampak sisa padaman yg luar orbit.
+    ambangKosong: 10,     // Beza minimum gelapnya dakwat dengan kertas. Jika takat kegelapan < 10, ia set "KOSONG" (soalan tak dijawab).
+    pemaafSisaPadaman: 12 // Kalau ada dua jawapan ditanda tebal, tapi beza kegelapan Jawapan Pertama dan Kedua adalah lebih daripada 12, sistem anggap Jawapan Kedua tu dipadam kurang sempurna dan akan terima Jawapan Pertama sbg valid.
+};
+
 const LOGO_TEPI_HTML = `
     <div class="absolute left-0 top-[25%] flex items-center justify-center gap-1 z-10" style="transform: translate(-50%, -50%) rotate(-90deg); transform-origin: center; white-space: nowrap;">
         <svg class="w-[10px] h-[10px] sm:w-[12px] sm:h-[12px] text-black" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -834,35 +848,71 @@ async function mulakanKamera() {
     ind.innerText = "Mengimbas OMR...";
     ind.classList.replace('bg-green-500/80', 'bg-black/40');
     
-    window.isScanning = false;
-    window.autoSnapCounter = 0;
+    (window as any).isScanning = false;
+    (window as any).autoSnapCounter = 0;
 
-    if (window.streamKamera) {
+    if ((window as any).streamKamera) {
         video.play().catch(e => console.log(e));
         renderFrameKamera();
+        setupFlashButton();
         return;
     }
 
     try {
-        window.streamKamera = await navigator.mediaDevices.getUserMedia({ 
+        (window as any).streamKamera = await navigator.mediaDevices.getUserMedia({ 
             video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } } 
         });
-        video.srcObject = window.streamKamera;
+        video.srcObject = (window as any).streamKamera;
         await video.play();
         renderFrameKamera();
+        setupFlashButton();
     } catch (err) {
         paparAlert("Kamera Gagal", "Kamera tidak dapat diakses. Sila benarkan tetapan privasi pelayar untuk mengakses kamera.");
     }
 }
 
+function setupFlashButton() {
+    const track = (window as any).streamKamera?.getVideoTracks()[0];
+    const btnFlash = document.getElementById('btn-toggle-flash');
+    if (track && track.getCapabilities && btnFlash) {
+        const capabilities = track.getCapabilities();
+        if (capabilities.torch) {
+            btnFlash.classList.remove('hidden');
+            let isFlashOn = false;
+            btnFlash.onclick = async () => {
+                isFlashOn = !isFlashOn;
+                try {
+                    await track.applyConstraints({
+                        advanced: [{ torch: isFlashOn }]
+                    });
+                    if (isFlashOn) {
+                        btnFlash.classList.replace('bg-black/50', 'bg-yellow-500/80');
+                    } else {
+                        btnFlash.classList.replace('bg-yellow-500/80', 'bg-black/50');
+                    }
+                } catch (e) {
+                    console.error("Failed to toggle flash", e);
+                }
+            };
+        } else {
+            btnFlash.classList.add('hidden');
+        }
+    }
+}
+
 function hentikanKamera() {
-    window.isScanning = true; 
-    if (window.streamKamera) {
-        window.streamKamera.getTracks().forEach((track: any) => track.stop());
-        window.streamKamera = null;
+    (window as any).isScanning = true; 
+    if ((window as any).streamKamera) {
+        (window as any).streamKamera.getTracks().forEach((track: any) => track.stop());
+        (window as any).streamKamera = null;
         (document.getElementById('kamera') as HTMLVideoElement).srcObject = null;
     }
-    if(window.gelungKamera) cancelAnimationFrame(window.gelungKamera);
+    if ((window as any).gelungKamera) cancelAnimationFrame((window as any).gelungKamera);
+    const btnFlash = document.getElementById('btn-toggle-flash');
+    if (btnFlash) {
+        btnFlash.classList.add('hidden');
+        btnFlash.classList.replace('bg-yellow-500/80', 'bg-black/50');
+    }
 }
 
 function renderFrameKamera() {
@@ -898,9 +948,9 @@ function renderFrameKamera() {
         const geo = dapatkanGeometriOMR(cw, ch);
         lukisPanduan(ctxO, cw, ch, geo);
 
-        window.autoSnapCounter++;
-        if (window.autoSnapCounter > 5) {
-            window.autoSnapCounter = 0;
+        (window as any).autoSnapCounter++;
+        if ((window as any).autoSnapCounter > CONFIG_IMBASAN.bingkaiSabar) {
+            (window as any).autoSnapCounter = 0;
             if (semakAutoSnap(ctxV, geo)) {
                 window.isScanning = true; 
                 let ind = document.getElementById('scan-indicator')!;
@@ -971,7 +1021,7 @@ function semakAutoSnap(ctx: any, geo: any) {
     let paperBrightness = highestAvg || 200;
     if (paperBrightness < 90) return false;
 
-    let darkThreshold = paperBrightness * 0.75, requiredDarkPixelsRatio = 0.23; 
+    let darkThreshold = paperBrightness * CONFIG_IMBASAN.ambangMarkerHitam, requiredDarkPixelsRatio = CONFIG_IMBASAN.nisbahPikselMarker; 
     let titikUjian = [
         {x: geo.boxX - half, y: geo.boxY - half}, {x: geo.boxX + geo.boxW - half, y: geo.boxY - half}, 
         {x: geo.boxX - half, y: geo.boxY + geo.boxH/2 - half}, {x: geo.boxX + geo.boxW - half, y: geo.boxY + geo.boxH/2 - half}, 
@@ -1030,7 +1080,7 @@ function analisisImej(sumberCanvas: HTMLCanvasElement) {
     let markah = 0;
     let butiran: any = [];
     const r = geo.rowHeight * 0.40;
-    const scanR = r * 0.50; 
+    const scanR = r * CONFIG_IMBASAN.radiusImbasan; 
 
     for (let i = 0; i < window.JUMLAH_SOALAN; i++) {
         let { cy, posX } = geo.getPilihanGeometri(i);
@@ -1047,12 +1097,21 @@ function analisisImej(sumberCanvas: HTMLCanvasElement) {
 
         let sortedBright = [...tahapKegelapan].sort((a,b) => a - b);
         let avgPaper = (sortedBright[1] + sortedBright[2] + sortedBright[3]) / 3;
-        let thresholdContrast = 15, pilihanPelajar = null;
+        let pilihanPelajar = null;
 
-        if ((avgPaper - sortedBright[0]) > thresholdContrast) {
+        let diff1 = avgPaper - sortedBright[0];
+        let diff2 = avgPaper - sortedBright[1];
+
+        if (diff1 > CONFIG_IMBASAN.ambangKosong) {
             let indeksJawapan = tahapKegelapan.indexOf(sortedBright[0]);
             pilihanPelajar = window.PILIHAN[indeksJawapan];
-            if ((avgPaper - sortedBright[1]) > thresholdContrast) pilihanPelajar = "BATAL"; 
+            
+            // Semakan 'Double Mark' (BATAL) vs 'Padaman Tak Bersih'
+            if (diff2 > CONFIG_IMBASAN.ambangKosong) {
+                if ((sortedBright[1] - sortedBright[0]) < CONFIG_IMBASAN.pemaafSisaPadaman) {
+                     pilihanPelajar = "BATAL";
+                }
+            }
         }
 
         let jawapanSebenar = window.skemaJawapan[i];
@@ -1070,7 +1129,7 @@ function analisisImej(sumberCanvas: HTMLCanvasElement) {
                 }
                 ctxDebug.fill(); 
             } 
-            else if (pilihanPelajar === "BATAL" && (avgPaper - tahapKegelapan[j]) > thresholdContrast) { 
+            else if (pilihanPelajar === "BATAL" && (avgPaper - tahapKegelapan[j]) > CONFIG_IMBASAN.ambangKosong) { 
                 ctxDebug.fillStyle = "rgba(251, 146, 60, 0.6)"; 
                 ctxDebug.fill(); 
             } 
