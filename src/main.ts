@@ -1,7 +1,28 @@
 import './index.css';
 import { initializeApp } from "firebase/app";
-import { getAuth, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged } from "firebase/auth";
+import { getAuth, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged, User } from "firebase/auth";
 import firebaseConfig from "../firebase-applet-config.json";
+
+declare global {
+    interface Window {
+        currentUser: string | null;
+        isLoginMode: boolean;
+        trialInterval: any;
+        JUMLAH_SOALAN: number;
+        PILIHAN: string[];
+        skemaJawapan: string[];
+        streamKamera: MediaStream | null;
+        gelungKamera: number;
+        isScanning: boolean;
+        autoSnapCounter: number;
+        kelasSemasa: string;
+        modAnalisisSemasa: string;
+        senaraiRekodKelas: any;
+        idUntukGanti: string | null;
+        idRekodSemasa: string | null;
+        mulaImbasSemulaRekod: (id: string) => void;
+    }
+}
 
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
@@ -305,7 +326,7 @@ function mintaSahkanPadamSemua() {
 }
 document.getElementById('btn-padam-semua')!.addEventListener('click', mintaSahkanPadamSemua);
 
-(window as any).mintaSahkanPadamRekod = function(event: any, id: number) {
+(window as any).mintaSahkanPadamRekod = function(event: any, id: string) {
     event.stopPropagation();
     paparConfirm("Padam Rekod Individu", "Cikgu pasti mahu padam rekod pelajar ini?", () => {
         window.senaraiRekodKelas = window.senaraiRekodKelas.filter((r: any) => r.id !== id);
@@ -386,7 +407,7 @@ function simpanKelas() {
 }
 document.getElementById('btn-simpan-kelas')!.addEventListener('click', simpanKelas);
 
-(window as any).bukaModalRekod = function(id: number) {
+(window as any).bukaModalRekod = function(id: string) {
     let rekod = window.senaraiRekodKelas.find((r: any) => r.id === id);
     if(!rekod) return;
 
@@ -440,7 +461,7 @@ document.getElementById('btn-simpan-kelas')!.addEventListener('click', simpanKel
         }
     };
 
-    document.getElementById('btn-modal-imbas')!.onclick = () => mulaImbasSemulaRekod(id);
+    document.getElementById('btn-modal-imbas')!.onclick = () => window.mulaImbasSemulaRekod(id);
 
     let modal = document.getElementById('modal-rekod')!;
     modal.classList.remove('hidden');
@@ -1202,7 +1223,7 @@ function analisisImej(sumberCanvas: HTMLCanvasElement) {
     
     if (proBulan > 0 || isTrialActive) {
         let rekodBaharu = {
-            id: window.idUntukGanti ? window.idUntukGanti : Date.now(),
+            id: window.idUntukGanti ? window.idUntukGanti : Date.now().toString(),
             markah: markah,
             jumlah: window.JUMLAH_SOALAN,
             peratus: parseFloat(peratus.toFixed(1)),
@@ -1449,7 +1470,7 @@ function paparAnalisisUI() {
         container.innerHTML = filteredRecords.map((rekod: any) => `
             <div class="flex flex-col bg-white p-2.5 rounded-[16px] shadow-sm border border-[#e5e5ea] hover:border-apple-blue hover:shadow-md transition-all relative">
                 <div class="flex items-center justify-between">
-                    <div onclick="window.bukaModalRekod(${rekod.id})" class="flex-1 flex items-center cursor-pointer active:scale-[0.98] mr-2 overflow-hidden">
+                    <div onclick="window.bukaModalRekod('${rekod.id}')" class="flex-1 flex items-center cursor-pointer active:scale-[0.98] mr-2 overflow-hidden">
                         <div class="w-[68%] h-[60px] bg-white rounded-[8px] overflow-hidden flex items-center justify-start border border-gray-200 shrink-0 px-1.5 py-1">
                             ${rekod.imejNama ? `<img src="${rekod.imejNama}" class="w-full h-full object-contain object-left scale-[1.15] origin-left" style="filter: grayscale(100%) contrast(180%) brightness(110%);" />` : '<span class="text-[10px] text-gray-400 font-medium">Tiada Imej</span>'}
                         </div>
@@ -1458,7 +1479,7 @@ function paparAnalisisUI() {
                             <div class="text-lg sm:text-xl font-bold text-apple-text">${rekod.peratus}%</div>
                         </div>
                     </div>
-                    <button onclick="window.mintaSahkanPadamRekod(event, ${rekod.id})" class="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-full transition-all bg-gray-50/50 shrink-0" title="Padam Rekod Individu">
+                    <button onclick="window.mintaSahkanPadamRekod(event, '${rekod.id}')" class="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-full transition-all bg-gray-50/50 shrink-0" title="Padam Rekod Individu">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
                     </button>
                 </div>
