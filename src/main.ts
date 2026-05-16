@@ -514,6 +514,7 @@ function simpanKelas() {
 document.getElementById('btn-simpan-kelas')!.addEventListener('click', simpanKelas);
 
 (window as any).bukaModalRekod = function(id: string) {
+    (window as any).modalRekodSemasaId = id;
     let rekod = window.senaraiRekodKelas.find((r: any) => r.id === id);
     if(!rekod) return;
 
@@ -534,12 +535,23 @@ document.getElementById('btn-simpan-kelas')!.addEventListener('click', simpanKel
         `;
     }).join('');
 
-    let aiVerifiedHtml = rekod.isAiVerified 
-        ? `<div class="absolute top-3 right-3 flex items-center justify-center bg-blue-50 text-blue-600 text-xs font-bold px-2 py-1 rounded-full border border-blue-100 shadow-sm gap-1">
+    let aiVerifiedHtml = '';
+    if (rekod.isAiVerified === true) {
+        aiVerifiedHtml = `<div class="absolute top-3 right-3 flex items-center justify-center bg-blue-50 text-blue-600 text-xs font-bold px-2.5 py-1 rounded-full border border-blue-100 shadow-sm gap-1">
              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-             AI Disemak
-           </div>` 
-        : '';
+             Disahkan AI
+           </div>`;
+    } else if (rekod.isAiVerified === 'pending') {
+        aiVerifiedHtml = `<div class="absolute top-3 right-3 flex items-center justify-center bg-orange-50 text-orange-600 text-xs font-bold px-2.5 py-1 rounded-full border border-orange-100 shadow-sm gap-1">
+             <svg class="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+             Disemak AI...
+           </div>`;
+    } else if (rekod.isAiVerified === 'failed') {
+        aiVerifiedHtml = `<div class="absolute top-3 right-3 flex items-center justify-center bg-gray-100 text-gray-500 text-xs font-bold px-2.5 py-1 rounded-full border border-gray-200 shadow-sm gap-1">
+             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+             AI Gagal
+           </div>`;
+    }
         
     let keratanNamaHtml = rekod.imejNama 
         ? `<div class="mt-4 mb-2 flex justify-center"><img src="${rekod.imejNama}" class="h-12 sm:h-14 object-contain" /></div>` 
@@ -1270,7 +1282,13 @@ PENTING:
         });
 
         if (response.text) {
-           const json = JSON.parse(response.text);
+           let cleanText = response.text;
+           if (cleanText.includes('```json')) {
+               cleanText = cleanText.split('```json')[1].split('```')[0].trim();
+           } else if (cleanText.includes('```')) {
+               cleanText = cleanText.split('```')[1].split('```')[0].trim();
+           }
+           const json = JSON.parse(cleanText);
            let butiranBaru = [];
            let markah = 0;
            for(let i=0;i<window.JUMLAH_SOALAN; i++) {
@@ -1452,7 +1470,7 @@ function analisisImej(sumberCanvas: HTMLCanvasElement) {
         if (elapsed < 3600) isTrialActive = true;
     }
     
-    const finaliseRekod = (finalMarkah: number, finalButiran: any[], isTukarTab: boolean = true, isAiVerified: boolean = false) => {
+    const finaliseRekod = (finalMarkah: number, finalButiran: any[], isTukarTab: boolean = true, isAiVerified: boolean | 'pending' | 'failed' = false) => {
         let finalPeratus = (finalMarkah / window.JUMLAH_SOALAN) * 100;
         if (proBulan > 0 || isTrialActive) {
             let rekodBaharu = {
@@ -1499,7 +1517,8 @@ function analisisImej(sumberCanvas: HTMLCanvasElement) {
         if (window.idUntukGanti) pendingId = window.idUntukGanti;
         window.idUntukGanti = pendingId;
         
-        finaliseRekod(markah, butiran, true);
+        finaliseRekod(markah, butiran, true, 'pending');
+        window.idUntukGanti = null;
         
         let aiIndicator = document.getElementById('ai-verifying-indicator');
         if (aiIndicator) {
@@ -1522,17 +1541,31 @@ function analisisImej(sumberCanvas: HTMLCanvasElement) {
                 
                 // Kemaskini paparan butiran individu jika modal terbuka
                 let modal = document.getElementById('modal-rekod');
-                if (modal && !modal.classList.contains('hidden') && window.idRekodSemasa === pendingId) {
+                if (modal && !modal.classList.contains('hidden') && (window as any).modalRekodSemasaId === pendingId) {
                     (window as any).bukaModalRekod(pendingId);
                 }
             } else {
                 console.warn("AI Gagal: CikguScan mengekalkan kiraan tempatan.");
+                window.idUntukGanti = pendingId;
+                finaliseRekod(markah, butiran, false, 'failed');
                 window.idUntukGanti = null;
+                paparAnalisisUI();
+                let modal = document.getElementById('modal-rekod');
+                if (modal && !modal.classList.contains('hidden') && (window as any).modalRekodSemasaId === pendingId) {
+                    (window as any).bukaModalRekod(pendingId);
+                }
             }
         }).catch(err => {
             if (aiIndicator) aiIndicator.classList.add('hidden');
             console.error("AI Ralat", err);
+            window.idUntukGanti = pendingId;
+            finaliseRekod(markah, butiran, false, 'failed');
             window.idUntukGanti = null;
+            paparAnalisisUI();
+            let modal = document.getElementById('modal-rekod');
+            if (modal && !modal.classList.contains('hidden') && (window as any).modalRekodSemasaId === pendingId) {
+                (window as any).bukaModalRekod(pendingId);
+            }
         });
     } else {
         finaliseRekod(markah, butiran, true);
@@ -1771,7 +1804,7 @@ function paparAnalisisUI() {
                 </div>
                 <div class="flex items-center gap-2 mt-2">
                     <div class="text-[10px] bg-gray-100 text-gray-500 px-2.5 py-0.5 rounded-full inline-block font-medium w-max">Kelas: ${rekod.kelas || 'Kelas Umum'}</div>
-                    ${rekod.isAiVerified ? `<div class="text-[10px] bg-blue-50 text-blue-600 px-2.5 py-0.5 rounded-full inline-flex items-center gap-1 font-bold border border-blue-100"><svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>AI Disemak</div>` : ''}
+                    ${rekod.isAiVerified === true ? `<div class="text-[10px] bg-blue-50 text-blue-600 px-2.5 py-0.5 rounded-full inline-flex items-center gap-1 font-bold border border-blue-100"><svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>Disahkan AI</div>` : (rekod.isAiVerified === 'pending' ? `<div class="text-[10px] bg-orange-50 text-orange-600 px-2.5 py-0.5 rounded-full inline-flex items-center gap-1 font-bold border border-orange-100"><svg class="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>Disemak AI...</div>` : '')}
                 </div>
             </div>
         `).join('');
