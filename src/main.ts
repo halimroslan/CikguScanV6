@@ -1485,15 +1485,7 @@ function analisisImej(sumberCanvas: HTMLCanvasElement) {
         if (window.idUntukGanti) pendingId = window.idUntukGanti;
         window.idUntukGanti = pendingId;
         
-        finaliseRekod(markah, butiran, false);
-        
-        // Teruskan kamera tanpa ganggu user
-        setTimeout(() => {
-            let tabImbas = document.getElementById('tab-imbas');
-            if (tabImbas && !tabImbas.classList.contains('hidden')) {
-                mulakanKamera();
-            }
-        }, 1200);
+        finaliseRekod(markah, butiran, true);
         
         let aiIndicator = document.getElementById('ai-verifying-indicator');
         if (aiIndicator) {
@@ -1508,6 +1500,11 @@ function analisisImej(sumberCanvas: HTMLCanvasElement) {
                 finaliseRekod(res.markah, res.butiran, false);
                 window.idUntukGanti = null;
                 paparAnalisisUI(); // Update senarai di background
+                
+                // Kemaskini paparan jika pengguna masih melihat keputusan ini
+                if (window.idRekodSemasa === pendingId) {
+                    paparKeputusan(res.markah, res.butiran, false);
+                }
             } else {
                 console.warn("AI Gagal: CikguScan mengekalkan kiraan tempatan.");
                 window.idUntukGanti = null;
