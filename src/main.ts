@@ -1421,15 +1421,16 @@ function tukarTab(idTab: string) {
     let proBulan = parseInt(localStorage.getItem('cikguscan_pro_bulan_' + window.currentUser) as any) || 0;
     let trialFinished = localStorage.getItem('cikguscan_trial_finished_' + window.currentUser) === 'true';
     let trialStart = localStorage.getItem('cikguscan_trial_start_' + window.currentUser);
+    let isPro = localStorage.getItem('cikguscan_is_pro_' + window.currentUser) === 'true';
     
     let isTrialActive = false;
-    if (proBulan <= 0 && !trialFinished && trialStart) {
+    if (proBulan <= 0 && !isPro && !trialFinished && trialStart) {
         let elapsed = Math.floor((Date.now() - parseInt(trialStart)) / 1000);
         if (elapsed < 3600) isTrialActive = true;
     }
 
     if (idTab === 'analisis') {
-        if (proBulan <= 0 && !isTrialActive) {
+        if (!isPro && proBulan <= 0 && !isTrialActive) {
             paparAlert("Akses Terhad.", "Khas langganan Pro sahaja.", true);
             return; 
         }
