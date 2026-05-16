@@ -18,18 +18,31 @@ let deferredPrompt: any;
 window.addEventListener('beforeinstallprompt', (e) => {
   e.preventDefault();
   deferredPrompt = e;
-  const installBtn = document.getElementById('btn-install-pwa');
-  if (installBtn) {
-    installBtn.classList.remove('hidden');
-    installBtn.addEventListener('click', async () => {
-      deferredPrompt.prompt();
-      const { outcome } = await deferredPrompt.userChoice;
-      if (outcome === 'accepted') {
-        installBtn.classList.add('hidden');
-      }
-      deferredPrompt = null;
-    });
-  }
+});
+
+window.addEventListener('DOMContentLoaded', () => {
+    const installBtn = document.getElementById('btn-install-pwa');
+    if (installBtn) {
+        // Semak jika sudah diinstall
+        if (window.matchMedia('(display-mode: standalone)').matches || (window.navigator as any).standalone === true) {
+            installBtn.classList.add('hidden');
+        } else {
+            installBtn.classList.remove('hidden');
+        }
+
+        installBtn.addEventListener('click', async () => {
+            if (deferredPrompt) {
+                deferredPrompt.prompt();
+                const { outcome } = await deferredPrompt.userChoice;
+                if (outcome === 'accepted') {
+                    installBtn.classList.add('hidden');
+                }
+                deferredPrompt = null;
+            } else {
+                paparAlert("Cara Install PWA", "Disebabkan halangan pelayar, sila tekan butang tiga titik pada menu pelayar (Chrome/Safari) dan pilih 'Add to Home Screen' atau 'Install App'. Untuk pengalaman terbaik, buka pautan aplikasi ini di tab baharu.");
+            }
+        });
+    }
 });
 
 import { initializeApp } from "firebase/app";
