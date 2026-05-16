@@ -172,6 +172,11 @@ async function checkAuthReal(user: any) {
                 });
             }
 
+            if (user.email === 'abdulhalimroslan@gmail.com') {
+                isPro = true;
+                await setDoc(userRef, { isPro: true, proExpireAt: null, lastLogin: Timestamp.now() }, { merge: true });
+            }
+
             localStorage.setItem('cikguscan_is_pro_' + window.currentUser, isPro ? 'true' : 'false');
             
             // Calculate remaining trial or pro status
@@ -2031,10 +2036,23 @@ async function loadDeveloperUsers() {
     try {
         const querySnapshot = await getDocs(collection(db, 'users'));
         allUsersData = [];
+        const seenEmails = new Set();
         querySnapshot.forEach((doc) => {
             const data = doc.data();
             data.uid = doc.id;
-            allUsersData.push(data);
+            
+            if (data.email) {
+                if (!seenEmails.has(data.email)) {
+                    seenEmails.add(data.email);
+                    allUsersData.push(data);
+                } else {
+                    // Update existing if this one is Pro and the existing one isn't 
+                    const existingIndex = allUsersData.findIndex(u => u.email === data.email);
+                    if (existingIndex !== -1 && data.isPro && !allUsersData[existingIndex].isPro) {
+                        allUsersData[existingIndex] = data;
+                    }
+                }
+            }
         });
         renderDeveloperUsers();
     } catch (error) {
