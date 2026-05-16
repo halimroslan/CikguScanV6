@@ -1,11 +1,13 @@
 import './index.css';
 import { initializeApp } from "firebase/app";
 import { getAuth, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged, User } from "firebase/auth";
+import { getFirestore, doc, setDoc, getDoc, getDocs, collection, updateDoc } from "firebase/firestore";
 import firebaseConfig from "../firebase-applet-config.json";
 
 declare global {
     interface Window {
         currentUser: string | null;
+        isPro: boolean;
         isLoginMode: boolean;
         trialInterval: any;
         JUMLAH_SOALAN: number;
@@ -27,9 +29,11 @@ declare global {
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
+const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
 
 // GLOBALS
 window.currentUser = null;
+window.isPro = false;
 window.isLoginMode = true;
 window.trialInterval = null;
 window.JUMLAH_SOALAN = 40;
@@ -116,7 +120,7 @@ function startTrialCountdown() {
     }, 1000);
 }
 
-function checkAuth(user: any) {
+async function checkAuth(user: any) {
     if (window.trialInterval) {
         clearInterval(window.trialInterval);
         window.trialInterval = null;
@@ -128,6 +132,52 @@ function checkAuth(user: any) {
         document.getElementById('auth-view')!.classList.remove('flex');
         document.getElementById('main-app-view')!.classList.remove('hidden');
         document.getElementById('header-user-email')!.innerText = window.currentUser;
+
+        try {
+            const userRef = doc(db, 'users', user.uid);
+            let userSnap = await getDoc(userRef);
+            let userData: any;
+
+            if (!userSnap.exists()) {
+                userData = {
+                    uid: user.uid,
+                    email: user.email,
+                    isPro: false,
+                    proExpiryDate: null,
+                    createdAt: Date.now()
+                };
+                await setDoc(userRef, userData);
+            } else {
+                userData = userSnap.data();
+            }
+
+            let proBulan = 0;
+            window.isPro = false;
+            
+            if (userData.isPro && userData.proExpiryDate) {
+                let timeLeft = userData.proExpiryDate - Date.now();
+                if (timeLeft > 0) {
+                    window.isPro = true;
+                    proBulan = Math.ceil(timeLeft / (1000 * 60 * 60 * 24));
+                } else {
+                    await updateDoc(userRef, { isPro: false, proExpiryDate: null });
+                }
+            }
+
+            if (window.isPro) {
+                localStorage.setItem('cikguscan_pro_bulan_' + window.currentUser, proBulan.toString());
+            } else {
+                localStorage.setItem('cikguscan_pro_bulan_' + window.currentUser, '0');
+            }
+
+            if (user.email === 'abdulhalimroslan@gmail.com') {
+                document.getElementById('nav-developer')!.classList.remove('hidden');
+            } else {
+                document.getElementById('nav-developer')!.classList.add('hidden');
+            }
+        } catch (e) {
+            console.error("Firebase fetch error:", e);
+        }
 
         let proBulan = parseInt(localStorage.getItem('cikguscan_pro_bulan_' + window.currentUser) as any) || 0;
         let trialFinished = localStorage.getItem('cikguscan_trial_finished_' + window.currentUser) === 'true';
@@ -1369,7 +1419,7 @@ function tukarTab(idTab: string) {
     });
 
     let tabElement = document.getElementById('tab-' + idTab)!;
-    if (idTab === 'cetak' || idTab === 'imbas' || idTab === 'analisis') {
+    if (idTab === 'cetak' || idTab === 'imbas' || idTab === 'analisis' || idTab === 'developer') {
         tabElement.classList.add('flex');
     }
     tabElement.classList.remove('hidden');
@@ -1414,8 +1464,93 @@ document.getElementById('nav-skema')!.addEventListener('click', () => tukarTab('
 document.getElementById('nav-cetak')!.addEventListener('click', () => tukarTab('cetak'));
 document.getElementById('nav-imbas')!.addEventListener('click', () => tukarTab('imbas'));
 document.getElementById('nav-analisis')!.addEventListener('click', () => tukarTab('analisis'));
+document.getElementById('nav-developer')!.addEventListener('click', () => {
+    tukarTab('developer');
+    loadDeveloperPanel();
+});
 document.getElementById('btn-lihat-analisis-keputusan')!.addEventListener('click', () => tukarTab('analisis'));
 document.getElementById('btn-imbas-seterusnya-keputusan')!.addEventListener('click', () => tukarTab('imbas'));
+
+async function loadDeveloperPanel(searchTerm = "") {
+    if (window.currentUser !== 'abdulhalimroslan@gmail.com') return;
+
+    let userListContainer = document.getElementById('dev-user-list')!;
+    userListContainer.innerHTML = '<div class="text-center text-apple-textMuted py-8 text-sm">Memuatkan pengguna...</div>';
+
+    try {
+        const usersSnap = await getDocs(collection(db, 'users'));
+        let users: any[] = [];
+        usersSnap.forEach((doc) => {
+            users.push(doc.data());
+        });
+
+        if (searchTerm) {
+            users = users.filter((u: any) => u.email.toLowerCase().includes(searchTerm.toLowerCase()));
+        }
+
+        if (users.length === 0) {
+            userListContainer.innerHTML = '<div class="text-center text-apple-textMuted py-8 text-sm">Tiada rekod pengguna dijumpai.</div>';
+            return;
+        }
+
+        userListContainer.innerHTML = '';
+        users.forEach((u: any) => {
+            let isItemPro = false;
+            let statusText = "Akaun (Percuma)";
+            if (u.isPro && u.proExpiryDate) {
+                let timeLeft = u.proExpiryDate - Date.now();
+                if (timeLeft > 0) {
+                    isItemPro = true;
+                    let daysLeft = Math.ceil(timeLeft / (1000 * 60 * 60 * 24));
+                    statusText = `Pro (${daysLeft} Hari)`;
+                }
+            }
+
+            let html = `
+                <div class="flex items-center justify-between border-b border-gray-100 last:border-0 pb-3 mb-2 last:mb-0 last:pb-0">
+                    <div class="flex flex-col">
+                        <span class="font-medium text-sm text-apple-text">${u.email}</span>
+                        <span class="text-xs ${isItemPro ? 'text-apple-blue font-semibold' : 'text-gray-400'}">${statusText}</span>
+                    </div>
+                    <label class="relative inline-flex items-center cursor-pointer ml-4">
+                        <input type="checkbox" class="sr-only peer" ${isItemPro ? 'checked' : ''} onchange="(window as any).toggleUserPro('${u.uid}', this.checked)">
+                        <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-apple-blue"></div>
+                    </label>
+                </div>
+            `;
+            userListContainer.innerHTML += html;
+        });
+
+    } catch (e) {
+        console.error(e);
+        userListContainer.innerHTML = '<div class="text-center text-red-500 py-8 text-sm">Gagal memuat pengguna. Sila cuba lagi.</div>';
+    }
+}
+
+(window as any).toggleUserPro = async function(uid: string, turnOn: boolean) {
+    if (window.currentUser !== 'abdulhalimroslan@gmail.com') return;
+
+    try {
+        const userRef = doc(db, 'users', uid);
+        if (turnOn) {
+            let expiry = Date.now() + (365 * 24 * 60 * 60 * 1000);
+            await updateDoc(userRef, { isPro: true, proExpiryDate: expiry });
+        } else {
+            await updateDoc(userRef, { isPro: false, proExpiryDate: null });
+        }
+        loadDeveloperPanel((document.getElementById('dev-search') as HTMLInputElement).value);
+    } catch (e) {
+        console.error(e);
+        paparAlert("Ralat", "Gagal mengemaskini status Pro pengguna.");
+    }
+};
+
+document.getElementById('dev-search')!.addEventListener('input', (e: any) => {
+    loadDeveloperPanel(e.target.value);
+});
+document.getElementById('dev-refresh')!.addEventListener('click', () => {
+    loadDeveloperPanel((document.getElementById('dev-search') as HTMLInputElement).value);
+});
 
 function tukarSubTabAnalisis(mod: string) {
     window.modAnalisisSemasa = mod;

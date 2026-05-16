@@ -87,11 +87,35 @@
                         Analisis
                         <span id="badge-analisis" class="hidden items-center justify-center w-[16px] h-[16px] text-[9px] font-bold text-white bg-apple-blue rounded-full shadow-sm ml-1">0</span>
                     </button>
+                    <button id="nav-developer" class="hidden flex-1 py-2 px-3 sm:px-4 flex items-center justify-center gap-1.5 font-medium text-xs sm:text-sm rounded-full transition-all duration-300 text-apple-textMuted hover:text-apple-text">
+                        Developer
+                    </button>
                 </div>
             </nav>
 
             <main class="w-full">
                 
+                <!-- TAB: DEVELOPER -->
+                <div id="tab-developer" class="tab-content hidden flex-col">
+                    <div class="text-center mb-8 no-print">
+                        <h2 class="text-3xl sm:text-4xl font-bold tracking-tight mb-2">Developer Panel.</h2>
+                        <p class="text-apple-textMuted font-medium">Urus langganan pengguna.</p>
+                    </div>
+
+                    <div class="apple-card bg-white rounded-[24px] p-6 sm:p-8 shadow-apple mb-6 no-print">
+                        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-apple-border/40 pb-6 mb-6">
+                            <h3 class="text-lg font-bold">Senarai Pengguna</h3>
+                            <div class="flex items-center gap-3">
+                                <input type="text" id="dev-search" placeholder="Cari email..." class="bg-gray-50 border border-apple-border rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-apple-blue/50">
+                                <button id="dev-refresh" class="bg-apple-blue text-white px-4 py-2 rounded-xl text-sm font-semibold hover:bg-apple-blueHover transition-colors">Muat Semula</button>
+                            </div>
+                        </div>
+                        <div id="dev-user-list" class="flex flex-col gap-3 max-h-[500px] overflow-y-auto pr-1">
+                            <div class="text-center text-apple-textMuted py-8 text-sm">Sila tunggu...</div>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- TAB: SKEMA JAWAPAN -->
                 <div id="tab-skema" class="tab-content">
                     <div class="text-center mb-8 no-print">
