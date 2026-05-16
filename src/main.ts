@@ -561,7 +561,7 @@ function binaBarisSoalan10(index: number, skemaJawapanList: any = null) {
         }
         return `
         <div class="flex-1 flex items-center justify-center h-full">
-            <svg viewBox="0 0 100 100" style="height: 100%; aspect-ratio: 1/1;">
+            <svg viewBox="0 0 100 100" style="height: 100%;">
                 <circle cx="50" cy="50" r="45" stroke="${strokeColor}" stroke-width="3" fill="${fillCircle}" />
                 <text x="50" y="50" dy=".35em" text-anchor="middle" font-size="46" font-family="'Inter', sans-serif" font-weight="400" fill="${fillText}">${p}</text>
             </svg>
@@ -623,7 +623,7 @@ function binaBarisSoalan20(index: number, skemaJawapanList: any = null) {
         }
         return `
         <div class="flex-1 flex items-center justify-center h-full">
-            <svg viewBox="0 0 100 100" style="height: 85%; aspect-ratio: 1/1;">
+            <svg viewBox="0 0 100 100" style="height: 85%; ">
                 <circle cx="50" cy="50" r="45" stroke="${strokeColor}" stroke-width="3" fill="${fillCircle}" />
                 <text x="50" y="50" dy=".35em" text-anchor="middle" font-size="46" font-family="'Inter', sans-serif" font-weight="400" fill="${fillText}">${p}</text>
             </svg>
@@ -689,7 +689,7 @@ function binaBarisSoalan30(index: number, skemaJawapanList: any = null) {
         }
         return `
         <div class="flex-1 flex items-center justify-center h-full">
-            <svg viewBox="0 0 100 100" style="height: 85%; aspect-ratio: 1/1;">
+            <svg viewBox="0 0 100 100" style="height: 85%; ">
                 <circle cx="50" cy="50" r="45" stroke="${strokeColor}" stroke-width="3" fill="${fillCircle}" />
                 <text x="50" y="50" dy=".35em" text-anchor="middle" font-size="46" font-family="'Inter', sans-serif" font-weight="400" fill="${fillText}">${p}</text>
             </svg>
@@ -758,7 +758,7 @@ function binaBarisSoalan40(index: number, totalRowsInBlock: number, skemaJawapan
         }
         return `
         <div class="flex-1 flex items-center justify-center h-full">
-            <svg viewBox="0 0 100 100" style="height: 85%; aspect-ratio: 1/1;">
+            <svg viewBox="0 0 100 100" style="height: 85%;">
                 <circle cx="50" cy="50" r="45" stroke="${strokeColor}" stroke-width="3" fill="${fillCircle}" />
                 <text x="50" y="50" dy=".35em" text-anchor="middle" font-size="46" font-family="'Inter', sans-serif" font-weight="400" fill="${fillText}">${p}</text>
             </svg>
