@@ -534,10 +534,23 @@ document.getElementById('btn-simpan-kelas')!.addEventListener('click', simpanKel
         `;
     }).join('');
 
+    let aiVerifiedHtml = rekod.isAiVerified 
+        ? `<div class="absolute top-3 right-3 flex items-center justify-center bg-blue-50 text-blue-600 text-xs font-bold px-2 py-1 rounded-full border border-blue-100 shadow-sm gap-1">
+             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+             AI Disemak
+           </div>` 
+        : '';
+        
+    let keratanNamaHtml = rekod.imejNama 
+        ? `<div class="mt-4 mb-2 flex justify-center"><img src="${rekod.imejNama}" class="h-12 sm:h-14 object-contain" /></div>` 
+        : '';
+
     document.getElementById('modal-kandungan')!.innerHTML = `
         <div class="mb-6 bg-white p-4 rounded-2xl shadow-sm text-center border border-gray-100 relative">
             <div class="text-xs bg-gray-100 text-gray-500 px-3 py-1 rounded-full absolute top-3 left-3 font-semibold">${rekod.kelas || 'Kelas Umum'}</div>
-            <div class="text-4xl font-extrabold text-apple-text tracking-tight mb-1 mt-4">${rekod.markah}<span class="text-xl text-gray-400 font-medium">/${rekod.jumlah}</span></div>
+            ${aiVerifiedHtml}
+            ${keratanNamaHtml}
+            <div class="text-4xl font-extrabold text-apple-text tracking-tight mb-1 mt-2">${rekod.markah}<span class="text-xl text-gray-400 font-medium">/${rekod.jumlah}</span></div>
             <div class="inline-block bg-apple-bg px-3 py-1 rounded-full text-apple-blue font-bold text-sm">${rekod.peratus}%</div>
         </div>
         
@@ -1439,7 +1452,7 @@ function analisisImej(sumberCanvas: HTMLCanvasElement) {
         if (elapsed < 3600) isTrialActive = true;
     }
     
-    const finaliseRekod = (finalMarkah: number, finalButiran: any[], isTukarTab: boolean = true) => {
+    const finaliseRekod = (finalMarkah: number, finalButiran: any[], isTukarTab: boolean = true, isAiVerified: boolean = false) => {
         let finalPeratus = (finalMarkah / window.JUMLAH_SOALAN) * 100;
         if (proBulan > 0 || isTrialActive) {
             let rekodBaharu = {
@@ -1450,7 +1463,8 @@ function analisisImej(sumberCanvas: HTMLCanvasElement) {
                 imejNama: imejNamaDataUrl,
                 imejPenuh: imejPenuhDataUrl,
                 butiran: finalButiran,
-                kelas: window.kelasSemasa
+                kelas: window.kelasSemasa,
+                isAiVerified: isAiVerified
             };
 
             window.idRekodSemasa = rekodBaharu.id;
@@ -1497,13 +1511,19 @@ function analisisImej(sumberCanvas: HTMLCanvasElement) {
             
             if (res) {
                 window.idUntukGanti = pendingId;
-                finaliseRekod(res.markah, res.butiran, false);
+                finaliseRekod(res.markah, res.butiran, false, true);
                 window.idUntukGanti = null;
                 paparAnalisisUI(); // Update senarai di background
                 
                 // Kemaskini paparan jika pengguna masih melihat keputusan ini
                 if (window.idRekodSemasa === pendingId) {
                     paparKeputusan(res.markah, res.butiran, false);
+                }
+                
+                // Kemaskini paparan butiran individu jika modal terbuka
+                let modal = document.getElementById('modal-rekod');
+                if (modal && !modal.classList.contains('hidden') && window.idRekodSemasa === pendingId) {
+                    (window as any).bukaModalRekod(pendingId);
                 }
             } else {
                 console.warn("AI Gagal: CikguScan mengekalkan kiraan tempatan.");
@@ -1749,7 +1769,10 @@ function paparAnalisisUI() {
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
                     </button>
                 </div>
-                <div class="text-[10px] bg-gray-100 text-gray-500 px-2.5 py-0.5 rounded-full inline-block mt-2 font-medium w-max">Kelas: ${rekod.kelas || 'Kelas Umum'}</div>
+                <div class="flex items-center gap-2 mt-2">
+                    <div class="text-[10px] bg-gray-100 text-gray-500 px-2.5 py-0.5 rounded-full inline-block font-medium w-max">Kelas: ${rekod.kelas || 'Kelas Umum'}</div>
+                    ${rekod.isAiVerified ? `<div class="text-[10px] bg-blue-50 text-blue-600 px-2.5 py-0.5 rounded-full inline-flex items-center gap-1 font-bold border border-blue-100"><svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>AI Disemak</div>` : ''}
+                </div>
             </div>
         `).join('');
     } else if (window.modAnalisisSemasa === 'kelas') {
