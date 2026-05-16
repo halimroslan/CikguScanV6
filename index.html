@@ -58,6 +58,10 @@
                     <h1 class="text-base sm:text-xl font-bold tracking-tight text-apple-text">CikguScan</h1>
                 </div>
                 <div class="flex items-center gap-2 sm:gap-3 min-w-0">
+                    <button id="btn-developer" class="hidden flex-shrink-0 text-xs font-semibold bg-gray-100 text-purple-600 hover:bg-purple-50 p-2 sm:px-4 sm:py-2 rounded-full transition-all border border-gray-200 active:scale-95 items-center gap-1.5 shadow-sm">
+                        <svg class="w-4 h-4 sm:w-3.5 sm:h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"></path></svg>
+                        <span class="hidden sm:inline">Developer</span>
+                    </button>
                     <div class="flex flex-col items-end justify-center mr-1 sm:mr-2 min-w-0">
                         <span class="text-[9px] sm:text-[10px] font-bold text-apple-textMuted uppercase tracking-wider whitespace-nowrap" id="header-user-status">Akaun Semasa</span>
                         <span class="text-[11px] sm:text-xs font-semibold text-apple-text truncate max-w-[110px] sm:max-w-[150px] block" id="header-user-email">cikgu@email.com</span>
@@ -86,9 +90,6 @@
                     <button id="nav-analisis" class="flex-1 py-2 px-3 sm:px-4 flex items-center justify-center gap-1.5 font-medium text-xs sm:text-sm rounded-full transition-all duration-300 text-apple-textMuted hover:text-apple-text">
                         Analisis
                         <span id="badge-analisis" class="hidden items-center justify-center w-[16px] h-[16px] text-[9px] font-bold text-white bg-apple-blue rounded-full shadow-sm ml-1">0</span>
-                    </button>
-                    <button id="nav-developer" class="hidden flex-1 py-2 px-3 sm:px-4 items-center justify-center gap-1.5 font-medium text-xs sm:text-sm rounded-full transition-all duration-300 text-apple-textMuted hover:text-apple-text">
-                        Developer
                     </button>
                 </div>
             </nav>
@@ -223,28 +224,6 @@
                     </div>
                 </div>
 
-                <!-- TAB: DEVELOPER -->
-                <div id="tab-developer" class="tab-content hidden flex-col">
-                    <div class="text-center mb-8 no-print">
-                        <h2 class="text-3xl sm:text-4xl font-bold tracking-tight mb-2">Developer Panel.</h2>
-                        <p class="text-apple-textMuted font-medium">Urus langganan pengguna.</p>
-                    </div>
-
-                    <div class="apple-card bg-white rounded-[24px] p-6 sm:p-8 shadow-apple mb-6 no-print">
-                        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-apple-border/40 pb-6 mb-6">
-                            <h3 class="font-semibold text-lg text-apple-text">Senarai Pengguna</h3>
-                            <div class="flex flex-col sm:flex-row items-center gap-2 w-full sm:w-auto">
-                                <input type="text" id="input-carian-pengguna" placeholder="Cari email..." class="w-full sm:w-auto text-sm p-2.5 bg-apple-bg border border-apple-border rounded-xl focus:outline-none focus:ring-2 focus:ring-apple-blue/50 transition-all">
-                                <button id="btn-muat-semula-pengguna" class="w-full sm:w-auto bg-apple-blue text-white px-4 py-2.5 rounded-xl text-sm font-medium hover:bg-apple-blueHover transition-all">Muat Semula</button>
-                            </div>
-                        </div>
-
-                        <div id="senarai-pengguna-container" class="flex flex-col gap-3 min-h-[150px]">
-                            <div class="text-center py-8 text-apple-textMuted text-sm font-medium">Tiada rekod pengguna dijumpai.</div>
-                        </div>
-                    </div>
-                </div>
-
                 <div id="cetakan-analisis-container" class="hidden w-full mx-auto print:block print:p-8 bg-white text-apple-text"></div>
 
                 <!-- TAB: KEPUTUSAN -->
@@ -299,6 +278,34 @@
                 </div>
 
             </main>
+        </div>
+    </div>
+
+    <!-- PAPARAN DEVELOPER -->
+    <div id="developer-view" class="hidden min-h-screen pb-20">
+        <header class="sticky top-0 z-50 bg-white/70 backdrop-blur-md border-b border-apple-border/50 transition-all duration-300 no-print">
+            <div class="max-w-3xl mx-auto px-3 sm:px-4 h-16 flex items-center justify-between">
+                <div class="flex items-center gap-1.5 sm:gap-3 flex-shrink-0">
+                    <h1 class="text-base sm:text-xl font-bold tracking-tight text-purple-600">Developer Console</h1>
+                </div>
+                <div class="flex items-center gap-2 sm:gap-3 min-w-0">
+                    <button id="btn-dev-tutup" class="flex-shrink-0 text-xs font-semibold bg-gray-100 text-gray-700 hover:bg-gray-200 p-2 sm:px-4 sm:py-2 rounded-full transition-all border border-gray-200 active:scale-95 flex items-center gap-1.5 shadow-sm">
+                        <span class="inline">Tutup</span>
+                    </button>
+                </div>
+            </div>
+        </header>
+        <div class="max-w-3xl mx-auto px-4 mt-6 sm:mt-10 flex flex-col">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+                <h2 class="text-2xl font-bold text-apple-text">Senarai Pengguna</h2>
+                <div class="flex gap-2">
+                    <input type="text" id="dev-search" placeholder="Cari email..." class="bg-white border border-gray-300 rounded-xl px-4 py-2 text-sm focus:ring-2 focus:ring-purple-500 outline-none w-full sm:w-64">
+                    <button id="btn-dev-refresh" class="bg-blue-600 text-white px-4 py-2 rounded-xl text-sm font-semibold hover:bg-blue-700 transition-all">Muat Semula</button>
+                </div>
+            </div>
+            <div id="dev-users-list" class="space-y-4">
+                <!-- User items rendered here -->
+            </div>
         </div>
     </div>
 

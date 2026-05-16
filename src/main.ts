@@ -1,7 +1,7 @@
 import './index.css';
 import { initializeApp } from "firebase/app";
 import { getAuth, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged, User } from "firebase/auth";
-import { getFirestore, doc, setDoc, getDoc, collection, getDocs, updateDoc } from "firebase/firestore";
+import { getFirestore, doc, setDoc, getDoc, collection, getDocs, Timestamp } from "firebase/firestore";
 import firebaseConfig from "../firebase-applet-config.json";
 
 declare global {
@@ -84,7 +84,8 @@ function startTrialCountdown() {
             return;
         }
         let proBulan = parseInt(localStorage.getItem('cikguscan_pro_bulan_' + window.currentUser) as string) || 0;
-        if (proBulan > 0) {
+        let isPro = localStorage.getItem('cikguscan_is_pro_' + window.currentUser) === 'true';
+        if (proBulan > 0 || isPro) {
             clearInterval(window.trialInterval);
             return;
         }
@@ -118,7 +119,7 @@ function startTrialCountdown() {
     }, 1000);
 }
 
-async function checkAuth(user: any) {
+async function checkAuthReal(user: any) {
     if (window.trialInterval) {
         clearInterval(window.trialInterval);
         window.trialInterval = null;
@@ -127,99 +128,132 @@ async function checkAuth(user: any) {
     if (user) {
         window.currentUser = user.email;
         
-        try {
-            const userRef = doc(db, 'users', user.email);
-            const userDoc = await getDoc(userRef);
-            
-            if (!userDoc.exists()) {
-                await setDoc(userRef, { email: user.email, proExpiry: null });
-                localStorage.setItem('cikguscan_pro_bulan_' + window.currentUser, '0');
-            } else {
-                const data = userDoc.data();
-                if (data && data.proExpiry) {
-                    const expiry = data.proExpiry; // expiry is timestamp in ms
-                    if (Date.now() > expiry) {
-                        localStorage.setItem('cikguscan_pro_bulan_' + window.currentUser, '0');
-                        await updateDoc(userRef, { proExpiry: null });
-                    } else {
-                        const daysLeft = Math.ceil((expiry - Date.now()) / (1000 * 60 * 60 * 24));
-                        localStorage.setItem('cikguscan_pro_bulan_' + window.currentUser, daysLeft.toString());
-                    }
-                } else {
-                    localStorage.setItem('cikguscan_pro_bulan_' + window.currentUser, '0');
-                }
-            }
-            
-            // Allow checking if user is dev (replace later if more robust check is needed)
+        let developerBtn = document.getElementById('btn-developer');
+        if (developerBtn) {
             if (user.email === 'abdulhalimroslan@gmail.com') {
-                document.getElementById('nav-developer')?.classList.remove('hidden');
-                document.getElementById('nav-developer')?.classList.add('flex');
+                developerBtn.classList.remove('hidden');
+                developerBtn.classList.add('flex');
             } else {
-                document.getElementById('nav-developer')?.classList.add('hidden');
-                document.getElementById('nav-developer')?.classList.remove('flex');
-            }
-        } catch (e) {
-            console.error("Firebase fetch error", e);
-        }
-
-        document.getElementById('auth-view')!.classList.add('hidden');
-        document.getElementById('auth-view')!.classList.remove('flex');
-        document.getElementById('main-app-view')!.classList.remove('hidden');
-        document.getElementById('header-user-email')!.innerText = window.currentUser;
-
-        let proBulan = parseInt(localStorage.getItem('cikguscan_pro_bulan_' + window.currentUser) as any) || 0;
-        let trialFinished = localStorage.getItem('cikguscan_trial_finished_' + window.currentUser) === 'true';
-        let trialStart = localStorage.getItem('cikguscan_trial_start_' + window.currentUser);
-        
-        let isTrialActive = false;
-        let secondsLeft = 0;
-
-        if (proBulan <= 0 && trialStart) {
-            let elapsed = Math.floor((Date.now() - parseInt(trialStart)) / 1000);
-            secondsLeft = 3600 - elapsed;
-
-            if (secondsLeft > 0) {
-                isTrialActive = true;
-                trialFinished = false; 
-                localStorage.setItem('cikguscan_trial_finished_' + window.currentUser, 'false');
-            } else {
-                localStorage.setItem('cikguscan_trial_finished_' + window.currentUser, 'true');
-                trialFinished = true;
+                developerBtn.classList.add('hidden');
+                developerBtn.classList.remove('flex');
             }
         }
 
-        let statusEl = document.getElementById('header-user-status');
-        let btnKelas = document.getElementById('btn-pilih-kelas');
-        
-        if (statusEl) {
-            if (proBulan > 0) {
-                statusEl.innerText = `AKAUN PRO (${proBulan} HARI)`;
-                statusEl.classList.remove('text-apple-textMuted', 'text-orange-500');
-                statusEl.classList.add('text-apple-blue');
-                if (btnKelas) btnKelas.parentElement!.classList.remove('hidden');
-            } else if (isTrialActive) {
-                let m = Math.floor(secondsLeft / 60);
-                let s = secondsLeft % 60;
-                statusEl.innerText = `CUBAAN PRO (${m}m ${s}s)`;
-                statusEl.classList.remove('text-apple-textMuted', 'text-apple-blue');
-                statusEl.classList.add('text-orange-500');
-                if (btnKelas) btnKelas.parentElement!.classList.remove('hidden');
-                startTrialCountdown();
+        // Save/Sync User in Firestore
+        try {
+            const userRef = doc(db, 'users', user.uid);
+            const userDoc = await getDoc(userRef);
+            let isPro = false;
+            let proExpireAt = null;
+
+            if (userDoc.exists()) {
+                const data = userDoc.data();
+                if (data.isPro) {
+                    // Check if expired
+                    if (data.proExpireAt && data.proExpireAt.toDate().getTime() > Date.now()) {
+                        isPro = true;
+                        proExpireAt = data.proExpireAt;
+                    } else if (data.proExpireAt && data.proExpireAt.toDate().getTime() <= Date.now()) {
+                        // Expired
+                        await setDoc(userRef, { isPro: false, proExpireAt: null }, { merge: true });
+                        isPro = false;
+                    } else {
+                        // isPro is true but no expiration, let's treat it as lifetime or admin override
+                        isPro = true;
+                    }
+                }
             } else {
-                statusEl.innerText = "AKAUN (PERCUMA)";
-                statusEl.classList.remove('text-apple-blue', 'text-orange-500');
-                statusEl.classList.add('text-apple-textMuted');
-                if (btnKelas) btnKelas.parentElement!.classList.add('hidden');
+                // First time login
+                await setDoc(userRef, {
+                    email: user.email,
+                    isPro: false,
+                    lastLogin: Timestamp.now(),
+                    trialCompleted: false
+                });
             }
+
+            localStorage.setItem('cikguscan_is_pro_' + window.currentUser, isPro ? 'true' : 'false');
+            
+            // Calculate remaining trial or pro status
+            continueAuthFlow(isPro);
+
+        } catch (error) {
+            console.error(error);
+            // Fallback for UI if DB fails
+            continueAuthFlow(false);
         }
 
-        initAppContent();
     } else {
         window.currentUser = null;
         document.getElementById('auth-view')!.classList.remove('hidden');
         document.getElementById('auth-view')!.classList.add('flex');
         document.getElementById('main-app-view')!.classList.add('hidden');
+        
+        let developerBtn = document.getElementById('btn-developer');
+        if (developerBtn) {
+            developerBtn.classList.add('hidden');
+            developerBtn.classList.remove('flex');
+        }
     }
+}
+
+function continueAuthFlow(isProMode: boolean) {
+    document.getElementById('auth-view')!.classList.add('hidden');
+    document.getElementById('auth-view')!.classList.remove('flex');
+    document.getElementById('main-app-view')!.classList.remove('hidden');
+    document.getElementById('header-user-email')!.innerText = window.currentUser || '';
+
+    let proBulan = parseInt(localStorage.getItem('cikguscan_pro_bulan_' + window.currentUser) as any) || 0;
+    let trialFinished = localStorage.getItem('cikguscan_trial_finished_' + window.currentUser) === 'true';
+    let trialStart = localStorage.getItem('cikguscan_trial_start_' + window.currentUser);
+    
+    let isTrialActive = false;
+    let secondsLeft = 0;
+
+    if (proBulan <= 0 && !isProMode && trialStart) {
+        let elapsed = Math.floor((Date.now() - parseInt(trialStart)) / 1000);
+        secondsLeft = 3600 - elapsed;
+
+        if (secondsLeft > 0) {
+            isTrialActive = true;
+            trialFinished = false; 
+            localStorage.setItem('cikguscan_trial_finished_' + window.currentUser, 'false');
+        } else {
+            localStorage.setItem('cikguscan_trial_finished_' + window.currentUser, 'true');
+            trialFinished = true;
+        }
+    }
+
+    let statusEl = document.getElementById('header-user-status');
+    let btnKelas = document.getElementById('btn-pilih-kelas');
+    
+    if (statusEl) {
+        if (proBulan > 0 || isProMode) {
+            statusEl.innerText = isProMode ? `AKAUN PRO (365 HARI)` : `AKAUN PRO (${proBulan} HARI)`;
+            statusEl.classList.remove('text-apple-textMuted', 'text-orange-500');
+            statusEl.classList.add('text-apple-blue');
+            if (btnKelas) btnKelas.parentElement!.classList.remove('hidden');
+        } else if (isTrialActive) {
+            let m = Math.floor(secondsLeft / 60);
+            let s = secondsLeft % 60;
+            statusEl.innerText = `CUBAAN PRO (${m}m ${s}s)`;
+            statusEl.classList.remove('text-apple-textMuted', 'text-apple-blue');
+            statusEl.classList.add('text-orange-500');
+            if (btnKelas) btnKelas.parentElement!.classList.remove('hidden');
+            startTrialCountdown();
+        } else {
+            statusEl.innerText = "AKAUN (PERCUMA)";
+            statusEl.classList.remove('text-apple-blue', 'text-orange-500');
+            statusEl.classList.add('text-apple-textMuted');
+            if (btnKelas) btnKelas.parentElement!.classList.add('hidden');
+        }
+    }
+
+    initAppContent();
+}
+
+function checkAuth(user: any) {
+    checkAuthReal(user);
 }
 
 onAuthStateChanged(auth, (user) => {
@@ -1407,7 +1441,7 @@ function tukarTab(idTab: string) {
     });
 
     let tabElement = document.getElementById('tab-' + idTab)!;
-    if (idTab === 'cetak' || idTab === 'imbas' || idTab === 'analisis' || idTab === 'developer') {
+    if (idTab === 'cetak' || idTab === 'imbas' || idTab === 'analisis') {
         tabElement.classList.add('flex');
     }
     tabElement.classList.remove('hidden');
@@ -1452,10 +1486,6 @@ document.getElementById('nav-skema')!.addEventListener('click', () => tukarTab('
 document.getElementById('nav-cetak')!.addEventListener('click', () => tukarTab('cetak'));
 document.getElementById('nav-imbas')!.addEventListener('click', () => tukarTab('imbas'));
 document.getElementById('nav-analisis')!.addEventListener('click', () => tukarTab('analisis'));
-document.getElementById('nav-developer')?.addEventListener('click', () => {
-    tukarTab('developer');
-    fetchAndRenderUsers();
-});
 document.getElementById('btn-lihat-analisis-keputusan')!.addEventListener('click', () => tukarTab('analisis'));
 document.getElementById('btn-imbas-seterusnya-keputusan')!.addEventListener('click', () => tukarTab('imbas'));
 
@@ -1953,131 +1983,99 @@ function updatePageOrientation(mode = 'omr') {
     }
 }
 
-let allUsersConfig: any[] = [];
+async function openDeveloperPage() {
+    document.getElementById('main-app-view')!.classList.add('hidden');
+    document.getElementById('developer-view')!.classList.remove('hidden');
+    await loadDeveloperUsers();
+}
 
-async function fetchAndRenderUsers() {
-    const container = document.getElementById('senarai-pengguna-container');
-    if (!container) return;
-    
-    container.innerHTML = '<div class="text-center py-8 text-apple-textMuted text-sm font-medium">Memuatkan pengguna...</div>';
-    
+document.getElementById('btn-developer')?.addEventListener('click', openDeveloperPage);
+
+document.getElementById('btn-dev-tutup')?.addEventListener('click', () => {
+    document.getElementById('developer-view')!.classList.add('hidden');
+    document.getElementById('main-app-view')!.classList.remove('hidden');
+});
+
+let allUsersData: any[] = [];
+
+async function loadDeveloperUsers() {
     try {
-        const querySnapshot = await getDocs(collection(db, "users"));
-        allUsersConfig = [];
-        querySnapshot.forEach((docSnap) => {
-            allUsersConfig.push(docSnap.data());
+        const querySnapshot = await getDocs(collection(db, 'users'));
+        allUsersData = [];
+        querySnapshot.forEach((doc) => {
+            const data = doc.data();
+            data.uid = doc.id;
+            allUsersData.push(data);
         });
-        
-        renderUsersList();
-    } catch (e) {
-        container.innerHTML = '<div class="text-center py-8 text-red-500 text-sm font-medium">Gagal memuatkan rekod pengguna.</div>';
-        console.error("Error fetching users", e);
+        renderDeveloperUsers();
+    } catch (error) {
+        console.error("Error loading users:", error);
     }
 }
 
-function renderUsersList() {
-    const container = document.getElementById('senarai-pengguna-container');
-    const searchInput = document.getElementById('input-carian-pengguna') as HTMLInputElement;
-    if (!container) return;
-    
-    let filteredUsers = allUsersConfig;
-    if (searchInput && searchInput.value) {
-        const query = searchInput.value.toLowerCase();
-        filteredUsers = filteredUsers.filter(u => u.email && u.email.toLowerCase().includes(query));
+document.getElementById('btn-dev-refresh')?.addEventListener('click', loadDeveloperUsers);
+
+document.getElementById('dev-search')?.addEventListener('input', renderDeveloperUsers);
+
+(window as any).toggleUserPro = async function(uid: string, toggleStatus: boolean) {
+    try {
+        const userRef = doc(db, 'users', uid);
+        if (toggleStatus) {
+            const expireDate = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000);
+            await setDoc(userRef, { isPro: true, proExpireAt: Timestamp.fromDate(expireDate) }, { merge: true });
+        } else {
+            await setDoc(userRef, { isPro: false, proExpireAt: null }, { merge: true });
+        }
+        await loadDeveloperUsers();
+    } catch (e) {
+        console.error(e);
+        paparAlert("Ralat", "Gagal mengemas kini status pengguna.");
     }
-    
-    if (filteredUsers.length === 0) {
-        container.innerHTML = '<div class="text-center py-8 text-apple-textMuted text-sm font-medium">Tiada rekod pengguna dijumpai.</div>';
-        return;
-    }
-    
+};
+
+function renderDeveloperUsers() {
+    const listEl = document.getElementById('dev-users-list');
+    if (!listEl) return;
+    const searchVal = (document.getElementById('dev-search') as HTMLInputElement)?.value.toLowerCase() || '';
+
     let html = '';
-    filteredUsers.forEach(user => {
+    const filtered = allUsersData.filter(u => u.email && u.email.toLowerCase().includes(searchVal));
+
+    filtered.forEach(u => {
         let isPro = false;
-        let daysLeft = 0;
-        let expiryDateObj = null;
-        if (user.proExpiry) {
-            const expiry = user.proExpiry; // timestamp ms
-            if (Date.now() < expiry) {
+        let daysLeftText = '';
+        if (u.isPro) {
+            if (u.proExpireAt && u.proExpireAt.toDate().getTime() > Date.now()) {
                 isPro = true;
-                daysLeft = Math.ceil((expiry - Date.now()) / (1000 * 60 * 60 * 24));
-                expiryDateObj = new Date(expiry);
+                const days = Math.ceil((u.proExpireAt.toDate().getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+                let expStr = u.proExpireAt.toDate().toLocaleDateString('ms-MY');
+                daysLeftText = `<span class="bg-blue-600 text-white text-[11px] px-2.5 py-0.5 rounded-full font-bold inline-block">PRO (${days} hari lagi)</span><div class="text-[11px] text-gray-400 mt-1 font-medium">Tamat: ${expStr}</div>`;
+            } else if (!u.proExpireAt) {
+                isPro = true;
+                daysLeftText = `<span class="bg-blue-600 text-white text-[11px] px-2.5 py-0.5 rounded-full font-bold inline-block">PRO (Lifetime)</span>`;
             }
         }
         
-        let statusBadge = isPro ?
-            `<span class="bg-apple-blue inline-flex items-center justify-center text-white text-[10px] sm:text-xs font-bold px-2 py-0.5 rounded-full">PRO (${daysLeft} hari lagi)</span>` :
-            `<span class="bg-gray-200 text-gray-500 text-[10px] sm:text-xs font-bold px-2 py-0.5 rounded-full inline-block">PERCUMA</span>`;
-            
-        let expiryTeks = isPro && expiryDateObj ? `<div class="text-xs text-gray-400 mt-1">Tamat: ${expiryDateObj.toLocaleDateString('ms-MY')}</div>` : ``;
+        let checkedAttr = isPro ? 'checked' : '';
 
         html += `
-            <div class="flex items-center justify-between p-4 bg-apple-bg rounded-xl border border-apple-border/50">
-                <div class="flex flex-col gap-1 items-start">
-                    <span class="font-semibold text-sm text-apple-text">${user.email}</span>
-                    ${statusBadge}
-                    ${expiryTeks}
-                </div>
-                <div>
-                    <label class="relative inline-flex items-center cursor-pointer">
-                      <input type="checkbox" class="sr-only peer" ${isPro ? 'checked' : ''} onchange="toggleProStatus('${user.email}', this.checked)">
-                      <div class="w-11 h-6 bg-gray-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-apple-blue"></div>
-                    </label>
+        <div class="bg-gray-50/20 rounded-[16px] p-4 sm:p-5 flex items-center justify-between border border-gray-200/80 shadow-sm transition-all hover:shadow-md">
+            <div>
+                <p class="font-bold text-gray-800 text-sm sm:text-base">${u.email}</p>
+                <div class="mt-1 flex flex-col items-start justify-center">
+                    ${isPro ? daysLeftText : `<span class="bg-gray-200 text-gray-500 text-[10px] sm:text-[11px] px-2.5 py-0.5 rounded-full font-bold tracking-wide uppercase">Percuma</span>`}
                 </div>
             </div>
+            <label class="relative inline-flex items-center cursor-pointer">
+                <input type="checkbox" class="sr-only peer" ${checkedAttr} onchange="window.toggleUserPro('${u.uid}', this.checked)">
+                <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+            </label>
+        </div>
         `;
     });
-    
-    container.innerHTML = html;
-}
 
-(window as any).toggleProStatus = async function(email: string, isNowPro: boolean) {
-    try {
-        const userRef = doc(db, 'users', email);
-        if (isNowPro) {
-            const oneYearFromNow = Date.now() + (365 * 24 * 60 * 60 * 1000);
-            await setDoc(userRef, { proExpiry: oneYearFromNow, email: email }, { merge: true });
-            const u = allUsersConfig.find(x => x.email === email);
-            if (u) u.proExpiry = oneYearFromNow;
-            
-            if (email === window.currentUser) {
-                localStorage.setItem('cikguscan_pro_bulan_' + window.currentUser, '365');
-                const statusEl = document.getElementById('header-user-status');
-                if (statusEl) {
-                    statusEl.innerText = `AKAUN PRO (365 HARI)`;
-                    statusEl.classList.remove('text-apple-textMuted', 'text-orange-500');
-                    statusEl.classList.add('text-apple-blue');
-                }
-            }
-        } else {
-            await setDoc(userRef, { proExpiry: null, email: email }, { merge: true });
-            const u = allUsersConfig.find(x => x.email === email);
-            if (u) u.proExpiry = null;
-            
-            if (email === window.currentUser) {
-                localStorage.setItem('cikguscan_pro_bulan_' + window.currentUser, '0');
-                const statusEl = document.getElementById('header-user-status');
-                if (statusEl) {
-                    statusEl.innerText = "AKAUN (PERCUMA)";
-                    statusEl.classList.remove('text-apple-blue', 'text-orange-500');
-                    statusEl.classList.add('text-apple-textMuted');
-                }
-            }
-        }
-        renderUsersList();
-    } catch(e) {
-        console.error("Gagal menukar status PRO", e);
-        paparAlert("Ralat", "Gagal mengemas kini status pengguna sistem.");
-        renderUsersList();
-    }
+    listEl.innerHTML = html;
 }
-
-document.getElementById('input-carian-pengguna')?.addEventListener('input', () => {
-    renderUsersList();
-});
-document.getElementById('btn-muat-semula-pengguna')?.addEventListener('click', () => {
-    fetchAndRenderUsers();
-});
 
 
 
