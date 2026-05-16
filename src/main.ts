@@ -1477,15 +1477,23 @@ function analisisImej(sumberCanvas: HTMLCanvasElement) {
     if (localStorage.getItem('gemini_api_key')) {
         let ind = document.getElementById('scan-indicator');
         if (ind) {
-            ind.innerText = "Selesai Imbas";
-            ind.classList.replace('bg-black/40', 'bg-green-500/80');
+            ind.innerText = "Disimpan & AI sdg mengesahkan...";
+            ind.classList.replace('bg-black/40', 'bg-blue-500/80');
         }
 
         let pendingId = Date.now().toString();
         if (window.idUntukGanti) pendingId = window.idUntukGanti;
         window.idUntukGanti = pendingId;
         
-        finaliseRekod(markah, butiran, true);
+        finaliseRekod(markah, butiran, false);
+        
+        // Teruskan kamera tanpa ganggu user
+        setTimeout(() => {
+            let tabImbas = document.getElementById('tab-imbas');
+            if (tabImbas && !tabImbas.classList.contains('hidden')) {
+                mulakanKamera();
+            }
+        }, 1200);
         
         let aiIndicator = document.getElementById('ai-verifying-indicator');
         if (aiIndicator) {
@@ -1499,14 +1507,14 @@ function analisisImej(sumberCanvas: HTMLCanvasElement) {
                 window.idUntukGanti = pendingId;
                 finaliseRekod(res.markah, res.butiran, false);
                 window.idUntukGanti = null;
+                paparAnalisisUI(); // Update senarai di background
             } else {
-                paparAlert("AI Gagal", "Proses AI gagal. CikguScan mengekalkan kiraan tempatan.");
+                console.warn("AI Gagal: CikguScan mengekalkan kiraan tempatan.");
                 window.idUntukGanti = null;
             }
         }).catch(err => {
             if (aiIndicator) aiIndicator.classList.add('hidden');
-            console.error(err);
-            paparAlert("AI Ralat", "Gagal menghubungi AI.");
+            console.error("AI Ralat", err);
             window.idUntukGanti = null;
         });
     } else {
