@@ -561,9 +561,10 @@ function binaBarisSoalan10(index: number, skemaJawapanList: any = null) {
         }
         return `
         <div class="flex-1 flex items-center justify-center h-full">
-            <div style="height: 100%; aspect-ratio: 1/1; border: 2.5px solid ${strokeColor}; background-color: ${fillCircle}; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-sizing: border-box; overflow: hidden; margin: 0 auto;">
-                <span style="color: ${fillText}; font-size: 11px; font-weight: 500; font-family: 'Inter', sans-serif;">${p}</span>
-            </div>
+            <svg viewBox="0 0 100 100" style="height: 100%; max-width: 100%;">
+                <circle cx="50" cy="50" r="45" stroke="${strokeColor}" stroke-width="4.5" fill="${fillCircle}" />
+                <text x="50" y="50" dy=".35em" text-anchor="middle" font-size="46" font-family="'Inter', sans-serif" font-weight="600" fill="${fillText}">${p}</text>
+            </svg>
         </div>`;
     }).join('');
     return `
@@ -622,9 +623,10 @@ function binaBarisSoalan20(index: number, skemaJawapanList: any = null) {
         }
         return `
         <div class="flex-1 flex items-center justify-center h-full">
-            <div style="height: 85%; ; aspect-ratio: 1/1; border: 2.5px solid ${strokeColor}; background-color: ${fillCircle}; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-sizing: border-box; overflow: hidden; margin: 0 auto;">
-                <span style="color: ${fillText}; font-size: 11px; font-weight: 500; font-family: 'Inter', sans-serif;">${p}</span>
-            </div>
+            <svg viewBox="0 0 100 100" style="height: 85%; max-width: 100%;">
+                <circle cx="50" cy="50" r="45" stroke="${strokeColor}" stroke-width="4.5" fill="${fillCircle}" />
+                <text x="50" y="50" dy=".35em" text-anchor="middle" font-size="46" font-family="'Inter', sans-serif" font-weight="600" fill="${fillText}">${p}</text>
+            </svg>
         </div>`;
     }).join('');
     return `
@@ -687,9 +689,10 @@ function binaBarisSoalan30(index: number, skemaJawapanList: any = null) {
         }
         return `
         <div class="flex-1 flex items-center justify-center h-full">
-            <div style="height: 85%; ; aspect-ratio: 1/1; border: 2.5px solid ${strokeColor}; background-color: ${fillCircle}; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-sizing: border-box; overflow: hidden; margin: 0 auto;">
-                <span style="color: ${fillText}; font-size: 11px; font-weight: 500; font-family: 'Inter', sans-serif;">${p}</span>
-            </div>
+            <svg viewBox="0 0 100 100" style="height: 85%; max-width: 100%;">
+                <circle cx="50" cy="50" r="45" stroke="${strokeColor}" stroke-width="4.5" fill="${fillCircle}" />
+                <text x="50" y="50" dy=".35em" text-anchor="middle" font-size="46" font-family="'Inter', sans-serif" font-weight="600" fill="${fillText}">${p}</text>
+            </svg>
         </div>`;
     }).join('');
     return `
@@ -755,9 +758,10 @@ function binaBarisSoalan40(index: number, totalRowsInBlock: number, skemaJawapan
         }
         return `
         <div class="flex-1 flex items-center justify-center h-full">
-            <div style="height: 85%; aspect-ratio: 1/1; border: 2.5px solid ${strokeColor}; background-color: ${fillCircle}; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-sizing: border-box; overflow: hidden; margin: 0 auto;">
-                <span style="color: ${fillText}; font-size: 11px; font-weight: 500; font-family: 'Inter', sans-serif;">${p}</span>
-            </div>
+            <svg viewBox="0 0 100 100" style="height: 85%; max-width: 100%;">
+                <circle cx="50" cy="50" r="45" stroke="${strokeColor}" stroke-width="4.5" fill="${fillCircle}" />
+                <text x="50" y="50" dy=".35em" text-anchor="middle" font-size="46" font-family="'Inter', sans-serif" font-weight="600" fill="${fillText}">${p}</text>
+            </svg>
         </div>`;
     }).join('');
     return `

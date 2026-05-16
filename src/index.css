@@ -32,6 +32,8 @@ body {
 @media print {
     body {
         background-color: white !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
     }
     
     header, nav, .no-print, .apple-segmented-control, #auth-view {
@@ -101,9 +103,6 @@ body {
     }
     
     * {
-        -webkit-print-color-adjust: exact !important;
-        print-color-adjust: exact !important;
-        font-family: 'Inter', sans-serif !important;
         backdrop-filter: none !important;
         -webkit-backdrop-filter: none !important;
         filter: none !important;
