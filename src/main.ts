@@ -1738,7 +1738,20 @@ function renderAnalisisItemHtml(records: any) {
     return htmlTable;
 }
 
+function startPrintLoading(btnId: string, text: string) {
+    const btn = document.getElementById(btnId) as HTMLButtonElement | null;
+    if (!btn) return null;
+    const originalHtml = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = `<span class="flex items-center justify-center gap-2"><svg class="animate-spin h-5 w-5 inline" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> ${text}</span>`;
+    return () => {
+        btn.innerHTML = originalHtml;
+        btn.disabled = false;
+    };
+}
+
 function eksportPDF() {
+    const revertBtn = startPrintLoading('btn-eksport-pdf', 'Memuatkan...');
     let dropdown = document.getElementById('filter-kelas-dropdown') as HTMLSelectElement;
     let filterValue = dropdown ? dropdown.value : 'Semua';
     let filteredRecords = window.senaraiRekodKelas;
@@ -1837,7 +1850,10 @@ function eksportPDF() {
     updatePageOrientation('analisis');
     document.body.classList.add('mode-cetak-analisis');
     
-    setTimeout(() => { window.print(); }, 500);
+    setTimeout(() => { 
+        window.print();
+        if (revertBtn) revertBtn();
+    }, 150);
 }
 document.getElementById('btn-eksport-pdf')!.addEventListener('click', eksportPDF);
 
@@ -1884,6 +1900,7 @@ function simpanSkema() {
 document.getElementById('btn-simpan-skema')!.addEventListener('click', simpanSkema);
 
 function cetakSkema() {
+    const revertBtn = startPrintLoading('btn-print-skema', 'Memuatkan...');
     document.title = "CikguScan OMR Skema";
 
     document.body.classList.remove('mode-cetak-analisis');
@@ -1893,17 +1910,22 @@ function cetakSkema() {
     
     setTimeout(() => { 
         window.print();
-    }, 500);
+        if (revertBtn) revertBtn();
+    }, 150);
 }
 document.getElementById('btn-print-skema')!.addEventListener('click', cetakSkema);
 
 function cetakBorangOMR() {
+    const revertBtn = startPrintLoading('btn-cetak-borang-omr', 'Memuatkan...');
     document.title = `CikguScan OMR ${window.JUMLAH_SOALAN} soalan`;
 
     document.body.classList.remove('mode-cetak-analisis', 'mode-cetak-skema');
     updatePageOrientation('omr');
 
-    setTimeout(() => { window.print(); }, 500);
+    setTimeout(() => { 
+        window.print(); 
+        if (revertBtn) revertBtn();
+    }, 150);
 }
 document.getElementById('btn-cetak-borang-omr')!.addEventListener('click', cetakBorangOMR);
 
