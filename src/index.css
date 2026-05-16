@@ -43,8 +43,7 @@ body {
     body:not(.mode-cetak-skema):not(.mode-cetak-analisis) #tab-imbas,
     body:not(.mode-cetak-skema):not(.mode-cetak-analisis) #tab-keputusan,
     body:not(.mode-cetak-skema):not(.mode-cetak-analisis) #tab-analisis,
-    body:not(.mode-cetak-skema):not(.mode-cetak-analisis) #cetakan-analisis-container,
-    body:not(.mode-cetak-skema):not(.mode-cetak-analisis) #tab-developer {
+    body:not(.mode-cetak-skema):not(.mode-cetak-analisis) #cetakan-analisis-container {
         display: none !important;
     }
     body:not(.mode-cetak-skema):not(.mode-cetak-analisis) #tab-cetak {
@@ -57,7 +56,6 @@ body {
     body.mode-cetak-skema #tab-imbas,
     body.mode-cetak-skema #tab-keputusan,
     body.mode-cetak-skema #tab-analisis,
-    body.mode-cetak-skema #tab-developer,
     body.mode-cetak-skema #cetakan-analisis-container,
     body.mode-cetak-skema button,
     body.mode-cetak-skema .bg-apple-bg,
@@ -78,7 +76,6 @@ body {
     body.mode-cetak-analisis #tab-imbas,
     body.mode-cetak-analisis #tab-keputusan,
     body.mode-cetak-analisis #tab-analisis,
-    body.mode-cetak-analisis #tab-developer,
     body.mode-cetak-analisis #tab-skema {
         display: none !important;
     }
