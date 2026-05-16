@@ -1250,7 +1250,7 @@ PENTING:
         const mimeType = imejBase64.split(';')[0].split(':')[1];
 
         const response = await ai.models.generateContent({
-             model: 'gemini-1.5-flash-8b', 
+             model: 'gemini-2.5-flash', 
              contents: [
                  {
                      inlineData: {
@@ -1320,7 +1320,7 @@ PENTING:
         }
         return null;
     } catch(e) {
-        console.error("AI Error", e);
+        console.error("AI Error object:", JSON.stringify(e, Object.getOwnPropertyNames(e), 2));
         return null;
     }
 }
