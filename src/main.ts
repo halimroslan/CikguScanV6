@@ -561,10 +561,9 @@ function binaBarisSoalan10(index: number, skemaJawapanList: any = null) {
         }
         return `
         <div class="flex-1 flex items-center justify-center h-full">
-            <svg viewBox="0 0 100 100" style="height: 100%;">
-                <circle cx="50" cy="50" r="45" stroke="${strokeColor}" stroke-width="3" fill="${fillCircle}" />
-                <text x="50" y="50" dy=".35em" text-anchor="middle" font-size="46" font-family="'Inter', sans-serif" font-weight="400" fill="${fillText}">${p}</text>
-            </svg>
+            <div style="height: 100%; aspect-ratio: 1/1; border: 2.5px solid ${strokeColor}; background-color: ${fillCircle}; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-sizing: border-box; overflow: hidden; margin: 0 auto;">
+                <span style="color: ${fillText}; font-size: 11px; font-weight: 500; font-family: 'Inter', sans-serif;">${p}</span>
+            </div>
         </div>`;
     }).join('');
     return `
@@ -623,10 +622,9 @@ function binaBarisSoalan20(index: number, skemaJawapanList: any = null) {
         }
         return `
         <div class="flex-1 flex items-center justify-center h-full">
-            <svg viewBox="0 0 100 100" style="height: 85%; ">
-                <circle cx="50" cy="50" r="45" stroke="${strokeColor}" stroke-width="3" fill="${fillCircle}" />
-                <text x="50" y="50" dy=".35em" text-anchor="middle" font-size="46" font-family="'Inter', sans-serif" font-weight="400" fill="${fillText}">${p}</text>
-            </svg>
+            <div style="height: 85%; ; aspect-ratio: 1/1; border: 2.5px solid ${strokeColor}; background-color: ${fillCircle}; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-sizing: border-box; overflow: hidden; margin: 0 auto;">
+                <span style="color: ${fillText}; font-size: 11px; font-weight: 500; font-family: 'Inter', sans-serif;">${p}</span>
+            </div>
         </div>`;
     }).join('');
     return `
@@ -689,10 +687,9 @@ function binaBarisSoalan30(index: number, skemaJawapanList: any = null) {
         }
         return `
         <div class="flex-1 flex items-center justify-center h-full">
-            <svg viewBox="0 0 100 100" style="height: 85%; ">
-                <circle cx="50" cy="50" r="45" stroke="${strokeColor}" stroke-width="3" fill="${fillCircle}" />
-                <text x="50" y="50" dy=".35em" text-anchor="middle" font-size="46" font-family="'Inter', sans-serif" font-weight="400" fill="${fillText}">${p}</text>
-            </svg>
+            <div style="height: 85%; ; aspect-ratio: 1/1; border: 2.5px solid ${strokeColor}; background-color: ${fillCircle}; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-sizing: border-box; overflow: hidden; margin: 0 auto;">
+                <span style="color: ${fillText}; font-size: 11px; font-weight: 500; font-family: 'Inter', sans-serif;">${p}</span>
+            </div>
         </div>`;
     }).join('');
     return `
@@ -758,10 +755,9 @@ function binaBarisSoalan40(index: number, totalRowsInBlock: number, skemaJawapan
         }
         return `
         <div class="flex-1 flex items-center justify-center h-full">
-            <svg viewBox="0 0 100 100" style="height: 85%;">
-                <circle cx="50" cy="50" r="45" stroke="${strokeColor}" stroke-width="3" fill="${fillCircle}" />
-                <text x="50" y="50" dy=".35em" text-anchor="middle" font-size="46" font-family="'Inter', sans-serif" font-weight="400" fill="${fillText}">${p}</text>
-            </svg>
+            <div style="height: 85%; aspect-ratio: 1/1; border: 2.5px solid ${strokeColor}; background-color: ${fillCircle}; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-sizing: border-box; overflow: hidden; margin: 0 auto;">
+                <span style="color: ${fillText}; font-size: 11px; font-weight: 500; font-family: 'Inter', sans-serif;">${p}</span>
+            </div>
         </div>`;
     }).join('');
     return `
@@ -1532,7 +1528,7 @@ function paparAnalisisUI() {
     document.getElementById('jumlah-rekod')!.innerText = filteredRecords.length.toString();
     
     if (filteredRecords.length === 0) {
-        container.innerHTML = '<div class="text-center py-10 px-4 text-apple-textMuted font-medium"><svg class="w-12 h-12 mx-auto text-gray-300 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>Belum ada sebarang rekod imbasan.</div>';
+        container.innerHTML = '<div class="text-center py-10 px-4 text-apple-textMuted font-medium"><svg class="w-12 h-12 mx-auto text-gray-500 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>Belum ada sebarang rekod imbasan.</div>';
         container.className = "apple-card bg-[#f1f1f2] border border-[#e5e5ea] rounded-[24px] overflow-hidden shadow-inner flex flex-col p-2 gap-2 min-h-[300px]";
         return;
     }
@@ -1837,9 +1833,7 @@ function eksportPDF() {
     updatePageOrientation('analisis');
     document.body.classList.add('mode-cetak-analisis');
     
-    setTimeout(() => {
-        window.print();
-    }, 300);
+    setTimeout(() => { window.print(); }, 500);
 }
 document.getElementById('btn-eksport-pdf')!.addEventListener('click', eksportPDF);
 
@@ -1895,7 +1889,7 @@ function cetakSkema() {
     
     setTimeout(() => { 
         window.print();
-    }, 300);
+    }, 500);
 }
 document.getElementById('btn-print-skema')!.addEventListener('click', cetakSkema);
 
@@ -1905,9 +1899,7 @@ function cetakBorangOMR() {
     document.body.classList.remove('mode-cetak-analisis', 'mode-cetak-skema');
     updatePageOrientation('omr');
 
-    setTimeout(() => {
-        window.print();
-    }, 300);
+    setTimeout(() => { window.print(); }, 500);
 }
 document.getElementById('btn-cetak-borang-omr')!.addEventListener('click', cetakBorangOMR);
 

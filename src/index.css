@@ -110,6 +110,11 @@ body {
         -webkit-filter: none !important;
         transition: none !important;
     }
+    .backdrop-blur-sm, .backdrop-blur-md, iframe, video, canvas, [class*="backdrop-blur"], .fixed {
+        display: none !important;
+        opacity: 0 !important;
+        pointer-events: none !important;
+    }
     .marker-corner {
         background-color: black !important;
     }
