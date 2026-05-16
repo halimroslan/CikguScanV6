@@ -24,7 +24,20 @@
                         <path d="M2 12H22" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
                     </svg>
                 </div>
-                <h1 class="text-3xl font-extrabold tracking-tight text-apple-text">CikguScan</h1>
+                <h1 class="text-3xl font-extrabold tracking-tight text-apple-text flex items-start">
+                    CikguScan
+                    <svg class="w-6 h-6 ml-0.5 text-apple-blue drop-shadow-sm -mt-0.5" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <defs>
+                        <mask id="cut-corner-1">
+                          <rect x="0" y="0" width="24" height="24" fill="white" />
+                          <circle cx="18" cy="6" r="6.5" fill="black" />
+                        </mask>
+                      </defs>
+                      <rect x="2" y="5" width="16" height="14" rx="4" fill="transparent" stroke="currentColor" stroke-width="2.5" mask="url(#cut-corner-1)"/>
+                      <text x="10" y="16" font-family="Arial, sans-serif" font-weight="900" font-size="11" fill="currentColor" text-anchor="middle" letter-spacing="-0.5">AI</text>
+                      <path d="M 18,0 C 18,4 20,5.5 24,5.5 C 20,5.5 18,7 18,11 C 18,7 16,5.5 12,5.5 C 16,5.5 18,4 18,0 Z" fill="currentColor"/>
+                    </svg>
+                </h1>
             </div>
             <h2 id="auth-title" class="text-xl sm:text-2xl font-bold text-center text-apple-text mb-2 tracking-tight">Log Masuk</h2>
             <p id="auth-subtitle" class="text-sm font-medium text-center text-apple-textMuted mb-8">Log masuk menggunakan akaun Google (Gmail) anda.</p>
@@ -39,8 +52,26 @@
                 Teruskan dengan Google
             </button>
         </div>
-        <div class="absolute bottom-8 left-0 right-0 text-center text-xs font-semibold text-gray-400">
-            CikguScan OMR &copy; 2026 By Sir Halim
+        <div class="absolute bottom-8 left-0 right-0 flex flex-col items-center justify-center gap-1.5 text-center text-xs font-semibold text-gray-400">
+            <div class="flex items-center justify-center gap-1">
+                &copy; 2026 
+                <span class="text-sm font-extrabold tracking-tight text-gray-500 flex items-start mx-0.5">
+                    CikguScan
+                    <svg class="w-3.5 h-3.5 ml-0.5 text-gray-400 drop-shadow-sm -mt-0.5" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <defs>
+                        <mask id="cut-corner-f1">
+                          <rect x="0" y="0" width="24" height="24" fill="white" />
+                          <circle cx="18" cy="6" r="6.5" fill="black" />
+                        </mask>
+                      </defs>
+                      <rect x="2" y="5" width="16" height="14" rx="4" fill="transparent" stroke="currentColor" stroke-width="2.5" mask="url(#cut-corner-f1)"/>
+                      <text x="10" y="16.5" font-family="Arial, sans-serif" font-weight="900" font-size="11" fill="currentColor" text-anchor="middle" letter-spacing="-0.5">AI</text>
+                      <path d="M 18,0 C 18,4 20,5.5 24,5.5 C 20,5.5 18,7 18,11 C 18,7 16,5.5 12,5.5 C 16,5.5 18,4 18,0 Z" fill="currentColor"/>
+                    </svg>
+                </span>
+                by Sir Halim.
+            </div>
+            <div>Hak Cipta Terpelihara (All Rights Reserved)</div>
         </div>
     </div>
 
@@ -48,7 +79,7 @@
     <div id="main-app-view" class="hidden">
         <header class="sticky top-0 z-50 bg-white/70 backdrop-blur-md border-b border-apple-border/50 transition-all duration-300 no-print">
             <div class="max-w-3xl mx-auto px-3 sm:px-4 h-16 flex items-center justify-between">
-                <div class="flex items-center gap-1.5 sm:gap-3 flex-shrink-0">
+                <div class="flex items-center gap-1 sm:gap-1.5 flex-shrink-0">
                     <svg class="w-7 h-7 sm:w-10 sm:h-10 text-apple-blue drop-shadow-md transition-transform hover:scale-105" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                         <rect x="6.5" y="5.5" width="11" height="13" rx="3.5" fill="currentColor" fill-opacity="0.2" />
                         <path d="M8 4H6.5C5.11929 4 4 5.11929 4 6.5V8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
@@ -57,13 +88,22 @@
                         <path d="M16 20H17.5C18.8807 20 20 18.8807 20 17.5V16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
                         <path d="M2 12H22" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
                     </svg>
-                    <h1 class="text-base sm:text-xl font-bold tracking-tight text-apple-text">CikguScan</h1>
+                    <h1 class="text-lg sm:text-2xl font-extrabold tracking-tight text-apple-text flex items-start">
+                        CikguScan
+                        <svg class="w-4 h-4 sm:w-5 sm:h-5 ml-0.5 text-apple-blue drop-shadow-sm -mt-0.5" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                          <defs>
+                            <mask id="cut-corner-2">
+                              <rect x="0" y="0" width="24" height="24" fill="white" />
+                              <circle cx="18" cy="6" r="6.5" fill="black" />
+                            </mask>
+                          </defs>
+                          <rect x="2" y="5" width="16" height="14" rx="4" fill="transparent" stroke="currentColor" stroke-width="2.5" mask="url(#cut-corner-2)"/>
+                          <text x="10" y="16" font-family="Arial, sans-serif" font-weight="900" font-size="11" fill="currentColor" text-anchor="middle" letter-spacing="-0.5">AI</text>
+                          <path d="M 18,0 C 18,4 20,5.5 24,5.5 C 20,5.5 18,7 18,11 C 18,7 16,5.5 12,5.5 C 16,5.5 18,4 18,0 Z" fill="currentColor"/>
+                        </svg>
+                    </h1>
                 </div>
                 <div class="flex items-center gap-2 sm:gap-3 min-w-0">
-                    <button id="btn-developer" class="hidden flex-shrink-0 text-xs font-semibold bg-gray-100 text-purple-600 hover:bg-purple-50 p-2 sm:px-4 sm:py-2 rounded-full transition-all border border-gray-200 active:scale-95 items-center gap-1.5 shadow-sm">
-                        <svg class="w-4 h-4 sm:w-3.5 sm:h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"></path></svg>
-                        <span class="hidden sm:inline">Developer</span>
-                    </button>
                     <div class="flex flex-col items-end justify-center mr-1 sm:mr-2 min-w-0">
                         <span class="text-[9px] sm:text-[10px] font-bold text-apple-textMuted uppercase tracking-wider whitespace-nowrap" id="header-user-status">Akaun Semasa</span>
                         <span class="text-[11px] sm:text-xs font-semibold text-apple-text truncate max-w-[110px] sm:max-w-[150px] block" id="header-user-email">cikgu@email.com</span>
@@ -82,23 +122,29 @@
 
         <div class="max-w-2xl mx-auto px-4 mt-6 sm:mt-10 flex flex-col">
             
-            <nav class="apple-segmented-control bg-[#e3e3e8] p-1 rounded-full flex mx-auto w-full sm:w-auto mb-8 no-print shadow-inner overflow-x-auto hide-scroll">
-                <div class="flex min-w-[340px] sm:min-w-full w-full">
-                    <button id="nav-skema" class="flex-1 py-2 px-3 sm:px-4 flex items-center justify-center gap-1.5 font-medium text-xs sm:text-sm rounded-full transition-all duration-300 bg-white text-apple-text shadow-sm">
-                        Skema
-                    </button>
-                    <button id="nav-cetak" class="flex-1 py-2 px-3 sm:px-4 flex items-center justify-center gap-1.5 font-medium text-xs sm:text-sm rounded-full transition-all duration-300 text-apple-textMuted hover:text-apple-text">
-                        Cetak
-                    </button>
-                    <button id="nav-imbas" class="flex-1 py-2 px-3 sm:px-4 flex items-center justify-center gap-1.5 font-medium text-xs sm:text-sm rounded-full transition-all duration-300 text-apple-textMuted hover:text-apple-text">
-                        Imbas
-                    </button>
-                    <button id="nav-analisis" class="flex-1 py-2 px-3 sm:px-4 flex items-center justify-center gap-1.5 font-medium text-xs sm:text-sm rounded-full transition-all duration-300 text-apple-textMuted hover:text-apple-text">
-                        Analisis
-                        <span id="badge-analisis" class="hidden items-center justify-center w-[16px] h-[16px] text-[9px] font-bold text-white bg-apple-blue rounded-full shadow-sm ml-1">0</span>
-                    </button>
-                </div>
-            </nav>
+            <div class="flex items-center gap-2 mx-auto w-full sm:w-auto mb-8 no-print p-0 overflow-x-auto hide-scroll justify-center">
+                <nav class="apple-segmented-control bg-[#e3e3e8] p-1 rounded-full flex mx-auto w-full sm:w-auto shadow-inner overflow-x-auto hide-scroll shrink-0">
+                    <div class="flex min-w-[340px] sm:min-w-full w-full">
+                        <button id="nav-skema" class="flex-1 py-2 px-3 sm:px-4 flex items-center justify-center gap-1.5 font-medium text-xs sm:text-sm rounded-full transition-all duration-300 bg-white text-apple-text shadow-sm">
+                            Skema
+                        </button>
+                        <button id="nav-cetak" class="flex-1 py-2 px-3 sm:px-4 flex items-center justify-center gap-1.5 font-medium text-xs sm:text-sm rounded-full transition-all duration-300 text-apple-textMuted hover:text-apple-text">
+                            Cetak
+                        </button>
+                        <button id="nav-imbas" class="flex-1 py-2 px-3 sm:px-4 flex items-center justify-center gap-1.5 font-medium text-xs sm:text-sm rounded-full transition-all duration-300 text-apple-textMuted hover:text-apple-text">
+                            Imbas
+                        </button>
+                        <button id="nav-analisis" class="flex-1 py-2 px-3 sm:px-4 flex items-center justify-center gap-1.5 font-medium text-xs sm:text-sm rounded-full transition-all duration-300 text-apple-textMuted hover:text-apple-text">
+                            Analisis
+                            <span id="badge-analisis" class="hidden items-center justify-center w-[16px] h-[16px] text-[9px] font-bold text-white bg-apple-blue rounded-full shadow-sm ml-1">0</span>
+                        </button>
+                    </div>
+                </nav>
+                <button id="btn-developer" class="hidden flex-shrink-0 text-sm font-bold bg-[#f1f1f5] text-purple-600 hover:bg-purple-100 p-2 sm:px-5 sm:py-2 rounded-full transition-all border border-gray-200 active:scale-95 flex items-center gap-1.5 shadow-sm h-full shrink-0 h-[36px] sm:h-[40px]">
+                    <span class="font-mono font-bold text-lg leading-none mt-0.5" style="letter-spacing: -1px;">&lt;/&gt;</span>
+                    <span class="hidden sm:inline">Developer</span>
+                </button>
+            </div>
 
             <main class="w-full">
                 
@@ -292,6 +338,28 @@
                 </div>
 
             </main>
+            
+            <div class="mt-20 mb-8 w-full flex flex-col items-center justify-center gap-1.5 text-center text-xs font-semibold text-gray-400 no-print">
+                <div class="flex items-center justify-center gap-1">
+                    &copy; 2026 
+                    <span class="text-sm font-extrabold tracking-tight text-gray-500 flex items-start mx-0.5">
+                        CikguScan
+                        <svg class="w-3.5 h-3.5 ml-0.5 text-gray-400 drop-shadow-sm -mt-0.5" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                          <defs>
+                            <mask id="cut-corner-f2">
+                              <rect x="0" y="0" width="24" height="24" fill="white" />
+                              <circle cx="18" cy="6" r="6.5" fill="black" />
+                            </mask>
+                          </defs>
+                          <rect x="2" y="5" width="16" height="14" rx="4" fill="transparent" stroke="currentColor" stroke-width="2.5" mask="url(#cut-corner-f2)"/>
+                          <text x="10" y="16.5" font-family="Arial, sans-serif" font-weight="900" font-size="11" fill="currentColor" text-anchor="middle" letter-spacing="-0.5">AI</text>
+                          <path d="M 18,0 C 18,4 20,5.5 24,5.5 C 20,5.5 18,7 18,11 C 18,7 16,5.5 12,5.5 C 16,5.5 18,4 18,0 Z" fill="currentColor"/>
+                        </svg>
+                    </span>
+                    by Sir Halim.
+                </div>
+                <div>Hak Cipta Terpelihara (All Rights Reserved)</div>
+            </div>
         </div>
     </div>
 
