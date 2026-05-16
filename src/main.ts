@@ -1242,11 +1242,10 @@ async function verifikasiAI(imejBase64: string, butiranAsal: any[]) : Promise<{m
 
         const prompt = `Anda adalah sistem pengesahan jawapan OMR (Optical Mark Recognition) bernama CikguScan.
 Sistem tempatan telah menganalisis imej OMR ini dan mendapati jawapan berikut (sebagai panduan awal sahaja):
-${butiranAsal.map((b: any, i: number) => `S${i+1}: Jawapan indeks ${b.jawapanPelajar === 'KOSONG' ? 'KOSONG' : b.jawapanPelajar} (Status: ${b.status})`).join('\n')}
-*Nota Indeks Jawapan: 0=A, 1=B, 2=C, 3=D
+${butiranAsal.map((b: any, i: number) => `S${i+1}: Jawapan yang dipilih ${b.jawapanPelajar === 'KOSONG' ? 'KOSONG' : b.jawapanPelajar} (Status Keputusan: ${b.betul ? 'BETUL' : 'SALAH'})`).join('\n')}
 
 Sila semak semula gambar helaian OMR pelajar ini dan berikan ketepatan muktamad.
-Terdapat ${window.JUMLAH_SOALAN} soalan semuanya. Kertas ini mungkin mempunyai kecacatan (tersenget dsb). Jika pelajar bulatkan lebih dari satu pilihan, set statusnya sebagai BATAL. Jika tiada jawapan dibulatkan, status KOSONG.
+Terdapat ${window.JUMLAH_SOALAN} soalan semuanya. Kertas ini mungkin mempunyai kecacatan (tersenget dsb). Jika pelajar bulatkan lebih dari satu pilihan, set statusnya sebagai BATAL. Jika tiada jawapan dibulatkan, status KOSONG. Siri markah asal daripada sistem tempatan adalah agak tepat. Anda hanya perlu membuat pembetulan logik jika ada kesilapan silau dan sebagainya.
 
 Skema Jawapan Sebenar:
 ${skemaPrompt}
@@ -1465,6 +1464,12 @@ function analisisImej(sumberCanvas: HTMLCanvasElement) {
     canvasKecil.getContext('2d')!.drawImage(canvasDebug, 0, 0, canvasKecil.width, canvasKecil.height);
     let imejPenuhDataUrl = canvasKecil.toDataURL('image/jpeg', 0.5);
 
+    let canvasAI = document.createElement('canvas');
+    canvasAI.width = 500;
+    canvasAI.height = ch * scaleDown;
+    canvasAI.getContext('2d')!.drawImage(sumberCanvas, 0, 0, canvasAI.width, canvasAI.height);
+    let imejPenuhDataUrlUnmarked = canvasAI.toDataURL('image/jpeg', 0.5);
+
     let peratus = (markah / window.JUMLAH_SOALAN) * 100;
     let proBulan = parseInt(localStorage.getItem('cikguscan_pro_bulan_' + window.currentUser) as any) || 0;
     let isPro = localStorage.getItem('cikguscan_is_pro_' + window.currentUser) === 'true';
@@ -1547,7 +1552,7 @@ function analisisImej(sumberCanvas: HTMLCanvasElement) {
             aiIndicator.classList.remove('hidden');
         }
 
-        verifikasiAI(imejPenuhDataUrl, butiran).then(res => {
+        verifikasiAI(imejPenuhDataUrlUnmarked, butiran).then(res => {
             if (aiIndicator) aiIndicator.classList.add('hidden');
             
             if (res) {
