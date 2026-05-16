@@ -87,6 +87,9 @@
                         Analisis
                         <span id="badge-analisis" class="hidden items-center justify-center w-[16px] h-[16px] text-[9px] font-bold text-white bg-apple-blue rounded-full shadow-sm ml-1">0</span>
                     </button>
+                    <button id="nav-developer" class="hidden flex-1 py-2 px-3 sm:px-4 items-center justify-center gap-1.5 font-medium text-xs sm:text-sm rounded-full transition-all duration-300 text-apple-textMuted hover:text-apple-text">
+                        Developer
+                    </button>
                 </div>
             </nav>
 
@@ -217,6 +220,28 @@
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
                             Eksport Analisis (PDF)
                         </button>
+                    </div>
+                </div>
+
+                <!-- TAB: DEVELOPER -->
+                <div id="tab-developer" class="tab-content hidden flex-col">
+                    <div class="text-center mb-8 no-print">
+                        <h2 class="text-3xl sm:text-4xl font-bold tracking-tight mb-2">Developer Panel.</h2>
+                        <p class="text-apple-textMuted font-medium">Urus langganan pengguna.</p>
+                    </div>
+
+                    <div class="apple-card bg-white rounded-[24px] p-6 sm:p-8 shadow-apple mb-6 no-print">
+                        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-apple-border/40 pb-6 mb-6">
+                            <h3 class="font-semibold text-lg text-apple-text">Senarai Pengguna</h3>
+                            <div class="flex flex-col sm:flex-row items-center gap-2 w-full sm:w-auto">
+                                <input type="text" id="input-carian-pengguna" placeholder="Cari email..." class="w-full sm:w-auto text-sm p-2.5 bg-apple-bg border border-apple-border rounded-xl focus:outline-none focus:ring-2 focus:ring-apple-blue/50 transition-all">
+                                <button id="btn-muat-semula-pengguna" class="w-full sm:w-auto bg-apple-blue text-white px-4 py-2.5 rounded-xl text-sm font-medium hover:bg-apple-blueHover transition-all">Muat Semula</button>
+                            </div>
+                        </div>
+
+                        <div id="senarai-pengguna-container" class="flex flex-col gap-3 min-h-[150px]">
+                            <div class="text-center py-8 text-apple-textMuted text-sm font-medium">Tiada rekod pengguna dijumpai.</div>
+                        </div>
                     </div>
                 </div>
 

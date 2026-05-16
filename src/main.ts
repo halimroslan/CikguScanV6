@@ -1,6 +1,7 @@
 import './index.css';
 import { initializeApp } from "firebase/app";
 import { getAuth, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged, User } from "firebase/auth";
+import { getFirestore, doc, setDoc, getDoc, collection, getDocs, updateDoc } from "firebase/firestore";
 import firebaseConfig from "../firebase-applet-config.json";
 
 declare global {
@@ -27,6 +28,7 @@ declare global {
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
+const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
 
 // GLOBALS
 window.currentUser = null;
@@ -116,7 +118,7 @@ function startTrialCountdown() {
     }, 1000);
 }
 
-function checkAuth(user: any) {
+async function checkAuth(user: any) {
     if (window.trialInterval) {
         clearInterval(window.trialInterval);
         window.trialInterval = null;
@@ -124,6 +126,42 @@ function checkAuth(user: any) {
 
     if (user) {
         window.currentUser = user.email;
+        
+        try {
+            const userRef = doc(db, 'users', user.email);
+            const userDoc = await getDoc(userRef);
+            
+            if (!userDoc.exists()) {
+                await setDoc(userRef, { email: user.email, proExpiry: null });
+                localStorage.setItem('cikguscan_pro_bulan_' + window.currentUser, '0');
+            } else {
+                const data = userDoc.data();
+                if (data && data.proExpiry) {
+                    const expiry = data.proExpiry; // expiry is timestamp in ms
+                    if (Date.now() > expiry) {
+                        localStorage.setItem('cikguscan_pro_bulan_' + window.currentUser, '0');
+                        await updateDoc(userRef, { proExpiry: null });
+                    } else {
+                        const daysLeft = Math.ceil((expiry - Date.now()) / (1000 * 60 * 60 * 24));
+                        localStorage.setItem('cikguscan_pro_bulan_' + window.currentUser, daysLeft.toString());
+                    }
+                } else {
+                    localStorage.setItem('cikguscan_pro_bulan_' + window.currentUser, '0');
+                }
+            }
+            
+            // Allow checking if user is dev (replace later if more robust check is needed)
+            if (user.email === 'abdulhalimroslan@gmail.com') {
+                document.getElementById('nav-developer')?.classList.remove('hidden');
+                document.getElementById('nav-developer')?.classList.add('flex');
+            } else {
+                document.getElementById('nav-developer')?.classList.add('hidden');
+                document.getElementById('nav-developer')?.classList.remove('flex');
+            }
+        } catch (e) {
+            console.error("Firebase fetch error", e);
+        }
+
         document.getElementById('auth-view')!.classList.add('hidden');
         document.getElementById('auth-view')!.classList.remove('flex');
         document.getElementById('main-app-view')!.classList.remove('hidden');
@@ -1369,7 +1407,7 @@ function tukarTab(idTab: string) {
     });
 
     let tabElement = document.getElementById('tab-' + idTab)!;
-    if (idTab === 'cetak' || idTab === 'imbas' || idTab === 'analisis') {
+    if (idTab === 'cetak' || idTab === 'imbas' || idTab === 'analisis' || idTab === 'developer') {
         tabElement.classList.add('flex');
     }
     tabElement.classList.remove('hidden');
@@ -1414,6 +1452,10 @@ document.getElementById('nav-skema')!.addEventListener('click', () => tukarTab('
 document.getElementById('nav-cetak')!.addEventListener('click', () => tukarTab('cetak'));
 document.getElementById('nav-imbas')!.addEventListener('click', () => tukarTab('imbas'));
 document.getElementById('nav-analisis')!.addEventListener('click', () => tukarTab('analisis'));
+document.getElementById('nav-developer')?.addEventListener('click', () => {
+    tukarTab('developer');
+    fetchAndRenderUsers();
+});
 document.getElementById('btn-lihat-analisis-keputusan')!.addEventListener('click', () => tukarTab('analisis'));
 document.getElementById('btn-imbas-seterusnya-keputusan')!.addEventListener('click', () => tukarTab('imbas'));
 
@@ -1910,6 +1952,132 @@ function updatePageOrientation(mode = 'omr') {
         styleTag.innerHTML = "@media print { @page { size: A4 landscape; margin: 15mm; } }";
     }
 }
+
+let allUsersConfig: any[] = [];
+
+async function fetchAndRenderUsers() {
+    const container = document.getElementById('senarai-pengguna-container');
+    if (!container) return;
+    
+    container.innerHTML = '<div class="text-center py-8 text-apple-textMuted text-sm font-medium">Memuatkan pengguna...</div>';
+    
+    try {
+        const querySnapshot = await getDocs(collection(db, "users"));
+        allUsersConfig = [];
+        querySnapshot.forEach((docSnap) => {
+            allUsersConfig.push(docSnap.data());
+        });
+        
+        renderUsersList();
+    } catch (e) {
+        container.innerHTML = '<div class="text-center py-8 text-red-500 text-sm font-medium">Gagal memuatkan rekod pengguna.</div>';
+        console.error("Error fetching users", e);
+    }
+}
+
+function renderUsersList() {
+    const container = document.getElementById('senarai-pengguna-container');
+    const searchInput = document.getElementById('input-carian-pengguna') as HTMLInputElement;
+    if (!container) return;
+    
+    let filteredUsers = allUsersConfig;
+    if (searchInput && searchInput.value) {
+        const query = searchInput.value.toLowerCase();
+        filteredUsers = filteredUsers.filter(u => u.email && u.email.toLowerCase().includes(query));
+    }
+    
+    if (filteredUsers.length === 0) {
+        container.innerHTML = '<div class="text-center py-8 text-apple-textMuted text-sm font-medium">Tiada rekod pengguna dijumpai.</div>';
+        return;
+    }
+    
+    let html = '';
+    filteredUsers.forEach(user => {
+        let isPro = false;
+        let daysLeft = 0;
+        let expiryDateObj = null;
+        if (user.proExpiry) {
+            const expiry = user.proExpiry; // timestamp ms
+            if (Date.now() < expiry) {
+                isPro = true;
+                daysLeft = Math.ceil((expiry - Date.now()) / (1000 * 60 * 60 * 24));
+                expiryDateObj = new Date(expiry);
+            }
+        }
+        
+        let statusBadge = isPro ?
+            `<span class="bg-apple-blue inline-flex items-center justify-center text-white text-[10px] sm:text-xs font-bold px-2 py-0.5 rounded-full">PRO (${daysLeft} hari lagi)</span>` :
+            `<span class="bg-gray-200 text-gray-500 text-[10px] sm:text-xs font-bold px-2 py-0.5 rounded-full inline-block">PERCUMA</span>`;
+            
+        let expiryTeks = isPro && expiryDateObj ? `<div class="text-xs text-gray-400 mt-1">Tamat: ${expiryDateObj.toLocaleDateString('ms-MY')}</div>` : ``;
+
+        html += `
+            <div class="flex items-center justify-between p-4 bg-apple-bg rounded-xl border border-apple-border/50">
+                <div class="flex flex-col gap-1 items-start">
+                    <span class="font-semibold text-sm text-apple-text">${user.email}</span>
+                    ${statusBadge}
+                    ${expiryTeks}
+                </div>
+                <div>
+                    <label class="relative inline-flex items-center cursor-pointer">
+                      <input type="checkbox" class="sr-only peer" ${isPro ? 'checked' : ''} onchange="toggleProStatus('${user.email}', this.checked)">
+                      <div class="w-11 h-6 bg-gray-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-apple-blue"></div>
+                    </label>
+                </div>
+            </div>
+        `;
+    });
+    
+    container.innerHTML = html;
+}
+
+(window as any).toggleProStatus = async function(email: string, isNowPro: boolean) {
+    try {
+        const userRef = doc(db, 'users', email);
+        if (isNowPro) {
+            const oneYearFromNow = Date.now() + (365 * 24 * 60 * 60 * 1000);
+            await setDoc(userRef, { proExpiry: oneYearFromNow, email: email }, { merge: true });
+            const u = allUsersConfig.find(x => x.email === email);
+            if (u) u.proExpiry = oneYearFromNow;
+            
+            if (email === window.currentUser) {
+                localStorage.setItem('cikguscan_pro_bulan_' + window.currentUser, '365');
+                const statusEl = document.getElementById('header-user-status');
+                if (statusEl) {
+                    statusEl.innerText = `AKAUN PRO (365 HARI)`;
+                    statusEl.classList.remove('text-apple-textMuted', 'text-orange-500');
+                    statusEl.classList.add('text-apple-blue');
+                }
+            }
+        } else {
+            await setDoc(userRef, { proExpiry: null, email: email }, { merge: true });
+            const u = allUsersConfig.find(x => x.email === email);
+            if (u) u.proExpiry = null;
+            
+            if (email === window.currentUser) {
+                localStorage.setItem('cikguscan_pro_bulan_' + window.currentUser, '0');
+                const statusEl = document.getElementById('header-user-status');
+                if (statusEl) {
+                    statusEl.innerText = "AKAUN (PERCUMA)";
+                    statusEl.classList.remove('text-apple-blue', 'text-orange-500');
+                    statusEl.classList.add('text-apple-textMuted');
+                }
+            }
+        }
+        renderUsersList();
+    } catch(e) {
+        console.error("Gagal menukar status PRO", e);
+        paparAlert("Ralat", "Gagal mengemas kini status pengguna sistem.");
+        renderUsersList();
+    }
+}
+
+document.getElementById('input-carian-pengguna')?.addEventListener('input', () => {
+    renderUsersList();
+});
+document.getElementById('btn-muat-semula-pengguna')?.addEventListener('click', () => {
+    fetchAndRenderUsers();
+});
 
 
 
