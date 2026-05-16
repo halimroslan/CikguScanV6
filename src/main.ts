@@ -1,4 +1,9 @@
 import './index.css';
+import { registerSW } from 'virtual:pwa-register';
+if ('serviceWorker' in navigator) {
+  registerSW({ immediate: true });
+}
+
 import { initializeApp } from "firebase/app";
 import { getAuth, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged, User } from "firebase/auth";
 import { getFirestore, doc, setDoc, getDoc, collection, getDocs, Timestamp } from "firebase/firestore";
