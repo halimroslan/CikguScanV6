@@ -1030,13 +1030,17 @@ function setupFlashButton() {
         const capabilities = track.getCapabilities();
         if (capabilities.torch) {
             btnFlash.classList.remove('hidden');
-            let isFlashOn = true;
+            let isFlashOn = localStorage.getItem('cikguscan_flash_pref') !== 'false';
             
             try {
                 track.applyConstraints({
                     advanced: [{ torch: isFlashOn }]
                 });
-                btnFlash.classList.replace('bg-black/50', 'bg-yellow-500/80');
+                if (isFlashOn) {
+                    btnFlash.classList.replace('bg-black/50', 'bg-yellow-500/80');
+                } else {
+                    btnFlash.classList.replace('bg-yellow-500/80', 'bg-black/50');
+                }
             } catch (e) {
                 console.error("Failed to auto-on flash", e);
                 isFlashOn = false;
@@ -1048,6 +1052,7 @@ function setupFlashButton() {
                     await track.applyConstraints({
                         advanced: [{ torch: isFlashOn }]
                     });
+                    localStorage.setItem('cikguscan_flash_pref', isFlashOn.toString());
                     if (isFlashOn) {
                         btnFlash.classList.replace('bg-black/50', 'bg-yellow-500/80');
                     } else {
@@ -1446,10 +1451,11 @@ function analisisImej(sumberCanvas: HTMLCanvasElement) {
 
     let peratus = (markah / window.JUMLAH_SOALAN) * 100;
     let proBulan = parseInt(localStorage.getItem('cikguscan_pro_bulan_' + window.currentUser) as any) || 0;
+    let isPro = localStorage.getItem('cikguscan_is_pro_' + window.currentUser) === 'true';
     let trialFinished = localStorage.getItem('cikguscan_trial_finished_' + window.currentUser) === 'true';
     let trialStart = localStorage.getItem('cikguscan_trial_start_' + window.currentUser);
     
-    if (proBulan <= 0 && !trialFinished && !trialStart) {
+    if (!isPro && proBulan <= 0 && !trialFinished && !trialStart) {
         trialStart = Date.now().toString();
         localStorage.setItem('cikguscan_trial_start_' + window.currentUser, trialStart);
         startTrialCountdown();
@@ -1465,14 +1471,14 @@ function analisisImej(sumberCanvas: HTMLCanvasElement) {
     }
 
     let isTrialActive = false;
-    if (proBulan <= 0 && !trialFinished && trialStart) {
+    if (!isPro && proBulan <= 0 && !trialFinished && trialStart) {
         let elapsed = Math.floor((Date.now() - parseInt(trialStart)) / 1000);
         if (elapsed < 3600) isTrialActive = true;
     }
     
     const finaliseRekod = (finalMarkah: number, finalButiran: any[], isTukarTab: boolean = true, isAiVerified: boolean | 'pending' | 'failed' = false) => {
         let finalPeratus = (finalMarkah / window.JUMLAH_SOALAN) * 100;
-        if (proBulan > 0 || isTrialActive) {
+        if (isPro || proBulan > 0 || isTrialActive) {
             let rekodBaharu = {
                 id: window.idUntukGanti ? window.idUntukGanti : Date.now().toString(),
                 markah: finalMarkah,
@@ -1577,11 +1583,12 @@ function paparKeputusan(markah: number, butiran: any, isTukarTab: boolean = true
     if (isTukarTab) tukarTab('keputusan'); 
     let peratus = (markah / window.JUMLAH_SOALAN) * 100;
     let proBulan = parseInt(localStorage.getItem('cikguscan_pro_bulan_' + window.currentUser) as any) || 0;
+    let isPro = localStorage.getItem('cikguscan_is_pro_' + window.currentUser) === 'true';
     let trialFinished = localStorage.getItem('cikguscan_trial_finished_' + window.currentUser) === 'true';
     let trialStart = localStorage.getItem('cikguscan_trial_start_' + window.currentUser);
     
     let isTrialActive = false;
-    if (proBulan <= 0 && !trialFinished && trialStart) {
+    if (!isPro && proBulan <= 0 && !trialFinished && trialStart) {
         let elapsed = Math.floor((Date.now() - parseInt(trialStart)) / 1000);
         if (elapsed < 3600) isTrialActive = true;
     }
@@ -1594,7 +1601,18 @@ function paparKeputusan(markah: number, butiran: any, isTukarTab: boolean = true
     let separatorKelas = document.getElementById('skor-separator');
     let btnPadamSemasa = document.getElementById('btn-padam-semasa');
     
-    if (proBulan > 0 || isTrialActive) {
+    let rekodSemasa = window.senaraiRekodKelas.find((r: any) => r.id === window.idRekodSemasa);
+    let nameContainer = document.getElementById('skor-imej-nama-container');
+    let nameImg = document.getElementById('skor-imej-nama') as HTMLImageElement;
+    
+    if (rekodSemasa && rekodSemasa.imejNama) {
+        nameImg.src = rekodSemasa.imejNama;
+        nameContainer?.classList.remove('hidden');
+    } else {
+        nameContainer?.classList.add('hidden');
+    }
+    
+    if (isPro || proBulan > 0 || isTrialActive) {
         if(labelKelas) {
             labelKelas.innerText = window.kelasSemasa;
             labelKelas.classList.remove('hidden');
