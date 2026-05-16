@@ -49,7 +49,7 @@ window.idRekodSemasa = null;
 
 const CONFIG_IMBASAN = {
     // 1. Parameter Kamera & Bingkai
-    bingkaiSabar: 7, // Bilangan bingkai yg ditunggu sebelum auto-snap utk elak motion blur.
+    bingkaiSabar: 30, // Bilangan bingkai yg ditunggu sebelum auto-snap utk elak motion blur.
     
     // 2. Parameter Pengesanan Segi Empat (Marker)
     ambangMarkerHitam: 0.70, // 70% dari nilai kertas putih (paper brightness) sebagai had piksel tu dikira gelap.
@@ -976,7 +976,18 @@ function setupFlashButton() {
         const capabilities = track.getCapabilities();
         if (capabilities.torch) {
             btnFlash.classList.remove('hidden');
-            let isFlashOn = false;
+            let isFlashOn = true;
+            
+            try {
+                track.applyConstraints({
+                    advanced: [{ torch: isFlashOn }]
+                });
+                btnFlash.classList.replace('bg-black/50', 'bg-yellow-500/80');
+            } catch (e) {
+                console.error("Failed to auto-on flash", e);
+                isFlashOn = false;
+            }
+
             btnFlash.onclick = async () => {
                 isFlashOn = !isFlashOn;
                 try {
