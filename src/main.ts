@@ -1750,6 +1750,26 @@ function startPrintLoading(btnId: string, text: string) {
     };
 }
 
+function executePrint(revertBtn: (() => void) | null) {
+    // Menggunakan requestAnimationFrame untuk mengelakkan Safari terbelenggu
+    // semasa menukar layout untuk pencetakan.
+    requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+            try {
+                // execCommand adakalanya lebih laju dalam Safari lama/tertentu
+                if (!document.execCommand('print', false, null)) {
+                    window.print();
+                }
+            } catch (e) {
+                window.print();
+            }
+            if (revertBtn) {
+                setTimeout(revertBtn, 500);
+            }
+        });
+    });
+}
+
 function eksportPDF() {
     const revertBtn = startPrintLoading('btn-eksport-pdf', 'Memuatkan...');
     let dropdown = document.getElementById('filter-kelas-dropdown') as HTMLSelectElement;
@@ -1850,10 +1870,7 @@ function eksportPDF() {
     updatePageOrientation('analisis');
     document.body.classList.add('mode-cetak-analisis');
     
-    setTimeout(() => { 
-        window.print();
-        if (revertBtn) revertBtn();
-    }, 150);
+    executePrint(revertBtn);
 }
 document.getElementById('btn-eksport-pdf')!.addEventListener('click', eksportPDF);
 
@@ -1908,10 +1925,7 @@ function cetakSkema() {
     janaBorangSkemaOMR();
     document.body.classList.add('mode-cetak-skema');
     
-    setTimeout(() => { 
-        window.print();
-        if (revertBtn) revertBtn();
-    }, 150);
+    executePrint(revertBtn);
 }
 document.getElementById('btn-print-skema')!.addEventListener('click', cetakSkema);
 
@@ -1922,10 +1936,7 @@ function cetakBorangOMR() {
     document.body.classList.remove('mode-cetak-analisis', 'mode-cetak-skema');
     updatePageOrientation('omr');
 
-    setTimeout(() => { 
-        window.print(); 
-        if (revertBtn) revertBtn();
-    }, 150);
+    executePrint(revertBtn);
 }
 document.getElementById('btn-cetak-borang-omr')!.addEventListener('click', cetakBorangOMR);
 
