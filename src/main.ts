@@ -1225,7 +1225,7 @@ PENTING:
         const mimeType = imejBase64.split(';')[0].split(':')[1];
 
         const response = await ai.models.generateContent({
-             model: 'gemini-2.5-flash', 
+             model: 'gemini-1.5-flash-8b', 
              contents: [
                  {
                      inlineData: {
@@ -1439,7 +1439,7 @@ function analisisImej(sumberCanvas: HTMLCanvasElement) {
         if (elapsed < 3600) isTrialActive = true;
     }
     
-    const finaliseRekod = (finalMarkah: number, finalButiran: any[]) => {
+    const finaliseRekod = (finalMarkah: number, finalButiran: any[], isTukarTab: boolean = true) => {
         let finalPeratus = (finalMarkah / window.JUMLAH_SOALAN) * 100;
         if (proBulan > 0 || isTrialActive) {
             let rekodBaharu = {
@@ -1462,7 +1462,6 @@ function analisisImej(sumberCanvas: HTMLCanvasElement) {
                 } else {
                     window.senaraiRekodKelas.unshift(rekodBaharu);
                 }
-                window.idUntukGanti = null; 
             } else {
                 window.senaraiRekodKelas.unshift(rekodBaharu);
             }
@@ -1472,36 +1471,52 @@ function analisisImej(sumberCanvas: HTMLCanvasElement) {
             window.idRekodSemasa = null; 
         }
         
-        paparKeputusan(finalMarkah, finalButiran);
+        paparKeputusan(finalMarkah, finalButiran, isTukarTab);
     };
 
     if (localStorage.getItem('gemini_api_key')) {
         let ind = document.getElementById('scan-indicator');
         if (ind) {
-            ind.innerText = "Mengesahkan dengan AI...";
-            ind.classList.remove('bg-green-500/80');
-            ind.classList.add('bg-blue-500/80');
+            ind.innerText = "Selesai Imbas";
+            ind.classList.replace('bg-black/40', 'bg-green-500/80');
+        }
+
+        let pendingId = Date.now().toString();
+        if (window.idUntukGanti) pendingId = window.idUntukGanti;
+        window.idUntukGanti = pendingId;
+        
+        finaliseRekod(markah, butiran, true);
+        
+        let aiIndicator = document.getElementById('ai-verifying-indicator');
+        if (aiIndicator) {
+            aiIndicator.classList.remove('hidden');
         }
 
         verifikasiAI(imejPenuhDataUrl, butiran).then(res => {
+            if (aiIndicator) aiIndicator.classList.add('hidden');
+            
             if (res) {
-                finaliseRekod(res.markah, res.butiran);
+                window.idUntukGanti = pendingId;
+                finaliseRekod(res.markah, res.butiran, false);
+                window.idUntukGanti = null;
             } else {
-                paparAlert("AI Gagal", "Proses AI gagal. CikguScan akan gunakan kiraan tempatan.");
-                finaliseRekod(markah, butiran);
+                paparAlert("AI Gagal", "Proses AI gagal. CikguScan mengekalkan kiraan tempatan.");
+                window.idUntukGanti = null;
             }
         }).catch(err => {
+            if (aiIndicator) aiIndicator.classList.add('hidden');
             console.error(err);
-            paparAlert("AI Ralat", "Gagal menghubungi Gemini.");
-            finaliseRekod(markah, butiran);
+            paparAlert("AI Ralat", "Gagal menghubungi AI.");
+            window.idUntukGanti = null;
         });
     } else {
-        finaliseRekod(markah, butiran);
+        finaliseRekod(markah, butiran, true);
+        window.idUntukGanti = null;
     }
 }
 
-function paparKeputusan(markah: number, butiran: any) {
-    tukarTab('keputusan'); 
+function paparKeputusan(markah: number, butiran: any, isTukarTab: boolean = true) {
+    if (isTukarTab) tukarTab('keputusan'); 
     let peratus = (markah / window.JUMLAH_SOALAN) * 100;
     let proBulan = parseInt(localStorage.getItem('cikguscan_pro_bulan_' + window.currentUser) as any) || 0;
     let trialFinished = localStorage.getItem('cikguscan_trial_finished_' + window.currentUser) === 'true';
