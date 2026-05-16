@@ -3,6 +3,7 @@ import { initializeApp } from "firebase/app";
 import { getAuth, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged, User } from "firebase/auth";
 import { getFirestore, doc, setDoc, getDoc, collection, getDocs, Timestamp } from "firebase/firestore";
 import firebaseConfig from "../firebase-applet-config.json";
+import { GoogleGenAI, Type } from "@google/genai";
 
 declare global {
     interface Window {
@@ -435,6 +436,34 @@ function kemaskiniBadgeAnalisis() {
         }
     }
 }
+
+function bukaModalAI() {
+    let input = document.getElementById('input-api-key') as HTMLInputElement;
+    input.value = localStorage.getItem('gemini_api_key') || "";
+    document.getElementById('modal-ai')!.classList.remove('hidden');
+    document.getElementById('modal-ai')!.classList.add('flex');
+    setTimeout(() => input.focus(), 100);
+}
+document.getElementById('btn-tetapan-ai')!.addEventListener('click', bukaModalAI);
+
+function tutupModalAI() {
+    document.getElementById('modal-ai')!.classList.add('hidden');
+    document.getElementById('modal-ai')!.classList.remove('flex');
+}
+document.getElementById('btn-batal-ai')!.addEventListener('click', tutupModalAI);
+
+function simpanAI() {
+    let val = (document.getElementById('input-api-key') as HTMLInputElement).value.trim();
+    if (val !== "") {
+        localStorage.setItem('gemini_api_key', val);
+        paparAlert("Berjaya", "API Key telah disimpan. AI kini akan digunakan untuk mengesahkan ketepatan imbasan OMR.");
+    } else {
+        localStorage.removeItem('gemini_api_key');
+        paparAlert("AI Dinyahaktif", "API Key telah dibuang. Sistem akan kembali menggunakan pengiraan imbasan biasa secara offline.");
+    }
+    tutupModalAI();
+}
+document.getElementById('btn-simpan-ai')!.addEventListener('click', simpanAI);
 
 function bukaModalKelas() {
     let input = document.getElementById('input-nama-kelas') as HTMLInputElement;
@@ -1164,6 +1193,107 @@ function tangkapDanTanda(dariAutoSnap = false) {
 }
 document.getElementById('btn-tangkap-dan-tanda')!.addEventListener('click', () => tangkapDanTanda(false));
 
+async function verifikasiAI(imejBase64: string, butiranAsal: any[]) : Promise<{markah: number, butiran: any[]} | null> {
+    const apiKey = localStorage.getItem('gemini_api_key');
+    if(!apiKey) return null;
+
+    try {
+        const ai = new GoogleGenAI({ apiKey });
+        
+        let skemaPrompt = "";
+        for(let i=0;i<window.JUMLAH_SOALAN; i++) {
+           skemaPrompt += `Soalan ${i+1}: ${window.skemaJawapan[i] || 'Tiada'}\n`;
+        }
+
+        const prompt = `Anda adalah sistem pengesahan jawapan OMR (Optical Mark Recognition) bernama CikguScan.
+Sistem tempatan telah menganalisis imej OMR ini dan mendapati jawapan berikut (sebagai panduan awal sahaja):
+${butiranAsal.map((b: any, i: number) => `S${i+1}: Jawapan indeks ${b.jawapanPelajar === 'KOSONG' ? 'KOSONG' : b.jawapanPelajar} (Status: ${b.status})`).join('\n')}
+*Nota Indeks Jawapan: 0=A, 1=B, 2=C, 3=D
+
+Sila semak semula gambar helaian OMR pelajar ini dan berikan ketepatan muktamad.
+Terdapat ${window.JUMLAH_SOALAN} soalan semuanya. Kertas ini mungkin mempunyai kecacatan (tersenget dsb). Jika pelajar bulatkan lebih dari satu pilihan, set statusnya sebagai BATAL. Jika tiada jawapan dibulatkan, status KOSONG.
+
+Skema Jawapan Sebenar:
+${skemaPrompt}
+
+PENTING:
+- Sila bandingkan bulatan pada kertas OMR dengan Skema Jawapan Sebenar.
+- 'jawapan_pelajar' mesti diisi dengan huruf A, B, C, atau D. Jika kosong tulis KOSONG, jika batal tulis BATAL.
+- 'status' mesti BETUL, SALAH, BATAL atau KOSONG.`;
+
+        const base64Data = imejBase64.split(',')[1];
+        const mimeType = imejBase64.split(';')[0].split(':')[1];
+
+        const response = await ai.models.generateContent({
+             model: 'gemini-2.5-flash', 
+             contents: [
+                 {
+                     inlineData: {
+                         data: base64Data,
+                         mimeType: mimeType
+                     }
+                 },
+                 prompt
+             ],
+             config: {
+                 responseMimeType: "application/json",
+                 responseSchema: {
+                     type: Type.OBJECT,
+                     properties: {
+                         butiran_jawapan: {
+                             type: Type.ARRAY,
+                             items: {
+                               type: Type.OBJECT,
+                               properties: {
+                                  soalan: { type: Type.INTEGER },
+                                  jawapan_pelajar: { type: Type.STRING, description: "Hanya huruf A, B, C, D, atau KOSONG, BATAL" },
+                                  status: { type: Type.STRING, description: "Hanya BETUL, SALAH, KOSONG, atau BATAL" }
+                               }
+                             }
+                         }
+                     }
+                 }
+             }
+        });
+
+        if (response.text) {
+           const json = JSON.parse(response.text);
+           let butiranBaru = [];
+           let markah = 0;
+           for(let i=0;i<window.JUMLAH_SOALAN; i++) {
+               let d = json.butiran_jawapan.find((x: any) => x.soalan === i+1);
+               let studentAns: any = 'KOSONG';
+               let sts = 2; // salah
+               let isBetul = false;
+               
+               if(d && d.status !== 'KOSONG') {
+                   if(d.jawapan_pelajar === 'A') studentAns = 'A';
+                   if(d.jawapan_pelajar === 'B') studentAns = 'B';
+                   if(d.jawapan_pelajar === 'C') studentAns = 'C';
+                   if(d.jawapan_pelajar === 'D') studentAns = 'D';
+                   
+                   if(d.status === 'BETUL') { markah++; isBetul = true; }
+                   if(d.status === 'BATAL') studentAns = 'BATAL';
+               } else {
+                   studentAns = 'KOSONG';
+               }
+               
+               butiranBaru.push({
+                   soalan: i + 1,
+                   jawapanPelajar: studentAns,
+                   jawapanSebenar: window.skemaJawapan[i],
+                   betul: isBetul
+               });
+           }
+           return { markah, butiran: butiranBaru };
+        }
+        return null;
+    } catch(e) {
+        console.error("AI Error", e);
+        return null;
+    }
+}
+
 function analisisImej(sumberCanvas: HTMLCanvasElement) {
     const ctx = sumberCanvas.getContext('2d', { willReadFrequently: true })!;
     const cw = sumberCanvas.width;
@@ -1309,38 +1439,65 @@ function analisisImej(sumberCanvas: HTMLCanvasElement) {
         if (elapsed < 3600) isTrialActive = true;
     }
     
-    if (proBulan > 0 || isTrialActive) {
-        let rekodBaharu = {
-            id: window.idUntukGanti ? window.idUntukGanti : Date.now().toString(),
-            markah: markah,
-            jumlah: window.JUMLAH_SOALAN,
-            peratus: parseFloat(peratus.toFixed(1)),
-            imejNama: imejNamaDataUrl,
-            imejPenuh: imejPenuhDataUrl,
-            butiran: butiran,
-            kelas: window.kelasSemasa
-        };
+    const finaliseRekod = (finalMarkah: number, finalButiran: any[]) => {
+        let finalPeratus = (finalMarkah / window.JUMLAH_SOALAN) * 100;
+        if (proBulan > 0 || isTrialActive) {
+            let rekodBaharu = {
+                id: window.idUntukGanti ? window.idUntukGanti : Date.now().toString(),
+                markah: finalMarkah,
+                jumlah: window.JUMLAH_SOALAN,
+                peratus: parseFloat(finalPeratus.toFixed(1)),
+                imejNama: imejNamaDataUrl,
+                imejPenuh: imejPenuhDataUrl,
+                butiran: finalButiran,
+                kelas: window.kelasSemasa
+            };
 
-        window.idRekodSemasa = rekodBaharu.id;
+            window.idRekodSemasa = rekodBaharu.id;
 
-        if (window.idUntukGanti) {
-            let idx = window.senaraiRekodKelas.findIndex((r: any) => r.id === window.idUntukGanti);
-            if (idx > -1) {
-                window.senaraiRekodKelas[idx] = rekodBaharu;
+            if (window.idUntukGanti) {
+                let idx = window.senaraiRekodKelas.findIndex((r: any) => r.id === window.idUntukGanti);
+                if (idx > -1) {
+                    window.senaraiRekodKelas[idx] = rekodBaharu;
+                } else {
+                    window.senaraiRekodKelas.unshift(rekodBaharu);
+                }
+                window.idUntukGanti = null; 
             } else {
                 window.senaraiRekodKelas.unshift(rekodBaharu);
             }
-            window.idUntukGanti = null; 
+            
+            simpanRekodLokal();
         } else {
-            window.senaraiRekodKelas.unshift(rekodBaharu);
+            window.idRekodSemasa = null; 
         }
         
-        simpanRekodLokal();
+        paparKeputusan(finalMarkah, finalButiran);
+    };
+
+    if (localStorage.getItem('gemini_api_key')) {
+        let ind = document.getElementById('scan-indicator');
+        if (ind) {
+            ind.innerText = "Mengesahkan dengan AI...";
+            ind.classList.remove('bg-green-500/80');
+            ind.classList.add('bg-blue-500/80');
+        }
+
+        verifikasiAI(imejPenuhDataUrl, butiran).then(res => {
+            if (res) {
+                finaliseRekod(res.markah, res.butiran);
+            } else {
+                paparAlert("AI Gagal", "Proses AI gagal. CikguScan akan gunakan kiraan tempatan.");
+                finaliseRekod(markah, butiran);
+            }
+        }).catch(err => {
+            console.error(err);
+            paparAlert("AI Ralat", "Gagal menghubungi Gemini.");
+            finaliseRekod(markah, butiran);
+        });
     } else {
-        window.idRekodSemasa = null; 
+        finaliseRekod(markah, butiran);
     }
-    
-    paparKeputusan(markah, butiran);
 }
 
 function paparKeputusan(markah: number, butiran: any) {

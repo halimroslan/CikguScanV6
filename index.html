@@ -68,6 +68,10 @@
                         <span class="text-[9px] sm:text-[10px] font-bold text-apple-textMuted uppercase tracking-wider whitespace-nowrap" id="header-user-status">Akaun Semasa</span>
                         <span class="text-[11px] sm:text-xs font-semibold text-apple-text truncate max-w-[110px] sm:max-w-[150px] block" id="header-user-email">cikgu@email.com</span>
                     </div>
+                    <button id="btn-tetapan-ai" class="flex-shrink-0 text-xs font-semibold bg-gray-100 text-blue-600 hover:bg-blue-50 p-2 sm:px-4 sm:py-2 rounded-full transition-all border border-gray-200 active:scale-95 flex items-center gap-1.5 shadow-sm">
+                        <svg class="w-4 h-4 sm:w-3.5 sm:h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                        <span class="hidden sm:inline">Tetapan AI</span>
+                    </button>
                     <button id="btn-logout" class="flex-shrink-0 text-xs font-semibold bg-gray-100 text-red-500 hover:bg-red-50 p-2 sm:px-4 sm:py-2 rounded-full transition-all border border-gray-200 active:scale-95 flex items-center gap-1.5 shadow-sm">
                         <svg class="w-4 h-4 sm:w-3.5 sm:h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
                         <span class="hidden sm:inline">Log Keluar</span>
@@ -324,6 +328,27 @@
             <div class="p-4 grid grid-cols-2 gap-3 bg-white border-t border-gray-100">
                 <button id="btn-batal-kelas" class="bg-gray-100 text-gray-600 py-3 rounded-[14px] font-medium hover:bg-gray-200 transition-all active:scale-[0.98]">Batal</button>
                 <button id="btn-simpan-kelas" class="bg-apple-blue text-white py-3 rounded-[14px] font-medium hover:bg-apple-blueHover transition-all active:scale-[0.98]">Simpan</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL TETAPAN AI -->
+    <div id="modal-ai" class="fixed inset-0 z-[110] bg-black/60 hidden flex-col justify-center items-center transition-opacity no-print backdrop-blur-sm px-4">
+        <div class="bg-white w-full max-w-md rounded-[24px] flex flex-col overflow-hidden shadow-2xl relative transform transition-transform border border-apple-border/30">
+            <div class="px-6 py-5 border-b border-gray-100 bg-white">
+                <h3 class="text-lg font-bold text-apple-text text-center">Tetapan AI & API Key</h3>
+                <p class="text-xs text-apple-textMuted text-center mt-2 leading-relaxed">
+                    Sila masukkan API Key untuk menggunakan sistem. <a href="https://aistudio.google.com/app/apikey" target="_blank" class="text-blue-500 hover:underline">Daftar di Google AI Studio</a> untuk mendapatkan API Key (percuma).<br>
+                    <span class="text-red-500 font-bold">Jangan gunakan email Delima (@moe-dl.edu.my).</span><br>
+                    <a href="https://youtu.be/" target="_blank" class="text-blue-500 hover:underline flex items-center justify-center gap-1 mt-1"><svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M19.615 3.184c-3.604-.246-11.631-.245-15.23 0-3.897.266-4.356 2.62-4.385 8.816.029 6.185.484 8.549 4.385 8.816 3.6.245 11.626.246 15.23 0 3.897-.266 4.356-2.62 4.385-8.816-.029-6.185-.484-8.549-4.385-8.816zm-10.615 12.816v-8l8 3.993-8 4.007z"></path></svg> Tonton video tutorial cara untuk dapatkan API Key</a>
+                </p>
+            </div>
+            <div class="p-6 bg-apple-bg">
+                <input type="password" id="input-api-key" placeholder="Tampal API Key Google Gemini anda di sini" class="w-full p-3.5 rounded-xl border border-gray-300 focus:ring-2 focus:ring-apple-blue outline-none text-center font-medium text-apple-text">
+            </div>
+            <div class="p-4 grid grid-cols-2 gap-3 bg-white border-t border-gray-100">
+                <button id="btn-batal-ai" class="bg-gray-100 text-gray-600 py-3 rounded-[14px] font-medium hover:bg-gray-200 transition-all active:scale-[0.98]">Batal</button>
+                <button id="btn-simpan-ai" class="bg-apple-blue text-white py-3 rounded-[14px] font-medium hover:bg-apple-blueHover transition-all active:scale-[0.98]">Simpan</button>
             </div>
         </div>
     </div>
