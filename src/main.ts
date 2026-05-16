@@ -559,7 +559,10 @@ document.getElementById('btn-simpan-kelas')!.addEventListener('click', simpanKel
     }
         
     let keratanNamaHtml = rekod.imejNama 
-        ? `<div class="mt-4 mb-2 flex justify-center"><img src="${rekod.imejNama}" class="h-12 sm:h-14 object-contain" /></div>` 
+        ? `<div class="mt-4 mb-2 flex flex-col items-center justify-center gap-1">
+             <img src="${rekod.imejNama}" class="h-12 sm:h-14 object-contain" />
+             ${rekod.namaDiramal ? `<div class="text-xs font-semibold text-blue-600 bg-blue-50 px-3 py-1 rounded-full w-max mt-1 max-w-[90%] truncate shadow-sm border border-blue-100">${rekod.namaDiramal}</div>` : ''}
+           </div>` 
         : '';
 
     document.getElementById('modal-kandungan')!.innerHTML = `
@@ -1228,7 +1231,7 @@ function tangkapDanTanda(dariAutoSnap = false) {
 }
 document.getElementById('btn-tangkap-dan-tanda')!.addEventListener('click', () => tangkapDanTanda(false));
 
-async function verifikasiAI(imejBase64: string, butiranAsal: any[]) : Promise<{markah: number, butiran: any[], ralat?: boolean} | null> {
+async function verifikasiAI(imejBase64: string, imejNamaBase64: string | null, butiranAsal: any[]) : Promise<{markah: number, butiran: any[], ralat?: boolean, nama?: string} | null> {
     const apiKey = localStorage.getItem('gemini_api_key');
     if(!apiKey) return null;
 
@@ -1244,8 +1247,10 @@ async function verifikasiAI(imejBase64: string, butiranAsal: any[]) : Promise<{m
 Sistem tempatan telah menganalisis imej OMR ini dan mendapati jawapan berikut (sebagai panduan awal sahaja):
 ${butiranAsal.map((b: any, i: number) => `S${i+1}: Jawapan yang dipilih ${b.jawapanPelajar === 'KOSONG' ? 'KOSONG' : b.jawapanPelajar} (Status Keputusan: ${b.betul ? 'BETUL' : 'SALAH'})`).join('\n')}
 
-Sila semak semula gambar helaian OMR pelajar ini dan berikan ketepatan muktamad.
+Sila semak semula gambar helaian OMR pelajar ini (serta keratan nama sekiranya ada) dan berikan ketepatan muktamad.
 Terdapat ${window.JUMLAH_SOALAN} soalan semuanya. Kertas ini mungkin mempunyai kecacatan (tersenget dsb). Jika pelajar bulatkan lebih dari satu pilihan, set statusnya sebagai BATAL. Jika tiada jawapan dibulatkan, status KOSONG. Siri markah asal daripada sistem tempatan adalah agak tepat. Anda hanya perlu membuat pembetulan logik jika ada kesilapan silau dan sebagainya.
+
+Sekiranya imej keratan nama disertakan, cuba baca dan teka tulisan tangan tersebut untuk mendapatkan nama pelajar (beserta nombor IC / kelas / maklumat lain di bahagian atas kertas).
 
 Skema Jawapan Sebenar:
 ${skemaPrompt}
@@ -1257,18 +1262,30 @@ PENTING:
 
         const base64Data = imejBase64.split(',')[1];
         const mimeType = imejBase64.split(';')[0].split(':')[1];
+        
+        let contentsConfig: any = [
+            {
+                inlineData: {
+                    data: base64Data,
+                    mimeType: mimeType
+                }
+            }
+        ];
+
+        if (imejNamaBase64) {
+            contentsConfig.push({
+                inlineData: {
+                    data: imejNamaBase64.split(',')[1],
+                    mimeType: imejNamaBase64.split(';')[0].split(':')[1]
+                }
+            });
+        }
+        
+        contentsConfig.push(prompt);
 
         const response = await ai.models.generateContent({
              model: 'gemini-2.5-flash', 
-             contents: [
-                 {
-                     inlineData: {
-                         data: base64Data,
-                         mimeType: mimeType
-                     }
-                 },
-                 prompt
-             ],
+             contents: contentsConfig,
              config: {
                  responseMimeType: "application/json",
                  responseSchema: {
@@ -1288,6 +1305,10 @@ PENTING:
                          ralat_imbasan_dikesan: {
                              type: Type.BOOLEAN,
                              description: "Set kepada true jika anda mendapati sistem tempatan salah mengesan banyak jawapan akibat masalah penjajaran imbasan, terlalu gelap, tersenget atau tidak dapat dibaca di sebahagian ruang bulatan"
+                         },
+                         nama_pelajar: {
+                             type: Type.STRING,
+                             description: "Nama yang berjaya dibaca daripada bahagian atas kertas OMR / keratan nama. Biarkan kosong sekiranya tidak dijumpai."
                          }
                      }
                  }
@@ -1336,7 +1357,7 @@ PENTING:
                });
            }
            let isRalat = json.ralat_imbasan_dikesan || diffCount >= 3;
-           return { markah, butiran: butiranBaru, ralat: isRalat };
+           return { markah, butiran: butiranBaru, ralat: isRalat, nama: json.nama_pelajar };
         }
         return null;
     } catch(e) {
@@ -1497,10 +1518,10 @@ function analisisImej(sumberCanvas: HTMLCanvasElement) {
         if (elapsed < 3600) isTrialActive = true;
     }
     
-    const finaliseRekod = (finalMarkah: number, finalButiran: any[], isTukarTab: boolean = true, isAiVerified: boolean | 'pending' | 'failed' | 'error' = false) => {
+    const finaliseRekod = (finalMarkah: number, finalButiran: any[], isTukarTab: boolean = true, isAiVerified: boolean | 'pending' | 'failed' | 'error' = false, namaDiramal: string | null = null) => {
         let finalPeratus = (finalMarkah / window.JUMLAH_SOALAN) * 100;
         if (isPro || proBulan > 0 || isTrialActive) {
-            let rekodBaharu = {
+            let rekodBaharu: any = {
                 id: window.idUntukGanti ? window.idUntukGanti : Date.now().toString(),
                 markah: finalMarkah,
                 jumlah: window.JUMLAH_SOALAN,
@@ -1511,6 +1532,9 @@ function analisisImej(sumberCanvas: HTMLCanvasElement) {
                 kelas: window.kelasSemasa,
                 isAiVerified: isAiVerified
             };
+            if (namaDiramal) {
+                rekodBaharu.namaDiramal = namaDiramal;
+            }
 
             window.idRekodSemasa = rekodBaharu.id;
 
@@ -1552,12 +1576,12 @@ function analisisImej(sumberCanvas: HTMLCanvasElement) {
             aiIndicator.classList.remove('hidden');
         }
 
-        verifikasiAI(imejPenuhDataUrlUnmarked, butiran).then(res => {
+        verifikasiAI(imejPenuhDataUrlUnmarked, imejNamaDataUrl, butiran).then(res => {
             if (aiIndicator) aiIndicator.classList.add('hidden');
             
             if (res) {
                 window.idUntukGanti = pendingId;
-                finaliseRekod(res.markah, res.butiran, false, res.ralat ? 'error' : true);
+                finaliseRekod(res.markah, res.butiran, false, res.ralat ? 'error' : true, res.nama);
                 window.idUntukGanti = null;
                 paparAnalisisUI(); // Update senarai di background
                 
@@ -1629,6 +1653,21 @@ function paparKeputusan(markah: number, butiran: any, isTukarTab: boolean = true
     if (rekodSemasa && rekodSemasa.imejNama) {
         nameImg.src = rekodSemasa.imejNama;
         nameContainer?.classList.remove('hidden');
+        
+        // Add predicted name beneath the image
+        let labelNama = document.getElementById('skor-nama-diramal');
+        if (!labelNama) {
+            labelNama = document.createElement('div');
+            labelNama.id = 'skor-nama-diramal';
+            labelNama.className = 'text-sm font-semibold text-blue-600 bg-blue-50 px-3 py-1 rounded-full mt-2 mx-auto text-center border border-blue-100 max-w-[90%] truncate';
+            nameContainer?.appendChild(labelNama);
+        }
+        if (rekodSemasa.namaDiramal) {
+            labelNama.innerText = rekodSemasa.namaDiramal;
+            labelNama.classList.remove('hidden');
+        } else {
+            labelNama.classList.add('hidden');
+        }
     } else {
         nameContainer?.classList.add('hidden');
     }
@@ -1829,8 +1868,9 @@ function paparAnalisisUI() {
             <div class="flex flex-col bg-white p-2.5 rounded-[16px] shadow-sm border border-[#e5e5ea] hover:border-apple-blue hover:shadow-md transition-all relative">
                 <div class="flex items-center justify-between">
                     <div onclick="window.bukaModalRekod('${rekod.id}')" class="flex-1 flex items-center cursor-pointer active:scale-[0.98] mr-2 overflow-hidden">
-                        <div class="w-[68%] h-[60px] bg-white rounded-[8px] overflow-hidden flex items-center justify-start border border-gray-200 shrink-0 px-1.5 py-1">
-                            ${rekod.imejNama ? `<img src="${rekod.imejNama}" class="w-full h-full object-contain object-left scale-[1.15] origin-left" style="filter: grayscale(100%) contrast(180%) brightness(110%);" />` : '<span class="text-[10px] text-gray-400 font-medium">Tiada Imej</span>'}
+                        <div class="w-[68%] h-[60px] bg-white rounded-[8px] overflow-hidden flex flex-col items-center justify-center border border-gray-200 shrink-0 px-1 py-1 relative">
+                            ${rekod.imejNama ? `<img src="${rekod.imejNama}" class="w-full ${rekod.namaDiramal ? 'h-[70%]' : 'h-full'} object-contain object-left scale-[1.10] origin-left" style="filter: grayscale(100%) contrast(180%) brightness(110%);" />` : '<span class="text-[10px] text-gray-400 font-medium my-auto">Tiada Imej</span>'}
+                            ${rekod.namaDiramal ? `<div class="w-full text-center text-[9px] font-bold text-blue-700 bg-blue-50/80 truncate px-1 border-t border-blue-100">${rekod.namaDiramal}</div>` : ''}
                         </div>
                         <div class="w-[32%] flex flex-col items-end justify-center pr-2 leading-tight">
                             <div class="text-[11px] sm:text-xs text-apple-textMuted font-semibold tracking-wider">${rekod.markah} / ${rekod.jumlah}</div>
@@ -2130,7 +2170,7 @@ function eksportPDF() {
             <tr class="border-b border-gray-300 hover:bg-gray-50 transition-colors">
                 <td class="p-2 border border-gray-300 text-center font-semibold text-gray-600">${index + 1}</td>
                 <td class="p-2 border border-gray-300 bg-white">
-                    ${rekod.imejNama ? `<img src="${rekod.imejNama}" class="h-8 sm:h-10 object-contain mx-auto sm:mx-0" style="filter: grayscale(100%) contrast(180%);" />` : '-'}
+                    ${rekod.imejNama ? `<div class="flex flex-col items-center justify-center gap-1"><img src="${rekod.imejNama}" class="h-8 sm:h-10 object-contain mx-auto sm:mx-0" style="filter: grayscale(100%) contrast(180%);" />${rekod.namaDiramal ? `<div class="text-[10px] font-bold text-blue-700 bg-gray-50 border border-gray-200 px-2 py-0.5 rounded-sm">${rekod.namaDiramal}</div>` : ''}</div>` : '-'}
                 </td>
                 <td class="p-2 border border-gray-300 text-center font-medium text-gray-600">${rekod.kelas || 'Kelas Umum'}</td>
                 <td class="p-2 border border-gray-300 text-center font-bold text-lg">${rekod.markah}/${window.JUMLAH_SOALAN}</td>
