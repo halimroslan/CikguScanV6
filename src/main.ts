@@ -551,6 +551,11 @@ document.getElementById('btn-simpan-kelas')!.addEventListener('click', simpanKel
              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
              AI Gagal
            </div>`;
+    } else if (rekod.isAiVerified === 'error') {
+        aiVerifiedHtml = `<div class="absolute top-3 right-3 flex items-center justify-center bg-red-50 text-red-600 text-xs font-bold px-2.5 py-1 rounded-full border border-red-100 shadow-sm gap-1">
+             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+             Terdapat Ralat (AI)
+           </div>`;
     }
         
     let keratanNamaHtml = rekod.imejNama 
@@ -1223,7 +1228,7 @@ function tangkapDanTanda(dariAutoSnap = false) {
 }
 document.getElementById('btn-tangkap-dan-tanda')!.addEventListener('click', () => tangkapDanTanda(false));
 
-async function verifikasiAI(imejBase64: string, butiranAsal: any[]) : Promise<{markah: number, butiran: any[]} | null> {
+async function verifikasiAI(imejBase64: string, butiranAsal: any[]) : Promise<{markah: number, butiran: any[], ralat?: boolean} | null> {
     const apiKey = localStorage.getItem('gemini_api_key');
     if(!apiKey) return null;
 
@@ -1280,6 +1285,10 @@ PENTING:
                                   status: { type: Type.STRING, description: "Hanya BETUL, SALAH, KOSONG, atau BATAL" }
                                }
                              }
+                         },
+                         ralat_imbasan_dikesan: {
+                             type: Type.BOOLEAN,
+                             description: "Set kepada true jika anda mendapati sistem tempatan salah mengesan banyak jawapan akibat masalah penjajaran imbasan, terlalu gelap, tersenget atau tidak dapat dibaca di sebahagian ruang bulatan"
                          }
                      }
                  }
@@ -1296,6 +1305,7 @@ PENTING:
            const json = JSON.parse(cleanText);
            let butiranBaru = [];
            let markah = 0;
+           let diffCount = 0;
            for(let i=0;i<window.JUMLAH_SOALAN; i++) {
                let d = json.butiran_jawapan.find((x: any) => x.soalan === i+1);
                let studentAns: any = 'KOSONG';
@@ -1313,6 +1323,11 @@ PENTING:
                } else {
                    studentAns = 'KOSONG';
                }
+
+               let originalAns = butiranAsal[i].jawapanPelajar;
+               if (studentAns !== originalAns && originalAns !== 'BATAL' && originalAns !== 'KOSONG') {
+                   diffCount++;
+               }
                
                butiranBaru.push({
                    soalan: i + 1,
@@ -1321,7 +1336,8 @@ PENTING:
                    betul: isBetul
                });
            }
-           return { markah, butiran: butiranBaru };
+           let isRalat = json.ralat_imbasan_dikesan || diffCount >= 3;
+           return { markah, butiran: butiranBaru, ralat: isRalat };
         }
         return null;
     } catch(e) {
@@ -1476,7 +1492,7 @@ function analisisImej(sumberCanvas: HTMLCanvasElement) {
         if (elapsed < 3600) isTrialActive = true;
     }
     
-    const finaliseRekod = (finalMarkah: number, finalButiran: any[], isTukarTab: boolean = true, isAiVerified: boolean | 'pending' | 'failed' = false) => {
+    const finaliseRekod = (finalMarkah: number, finalButiran: any[], isTukarTab: boolean = true, isAiVerified: boolean | 'pending' | 'failed' | 'error' = false) => {
         let finalPeratus = (finalMarkah / window.JUMLAH_SOALAN) * 100;
         if (isPro || proBulan > 0 || isTrialActive) {
             let rekodBaharu = {
@@ -1536,7 +1552,7 @@ function analisisImej(sumberCanvas: HTMLCanvasElement) {
             
             if (res) {
                 window.idUntukGanti = pendingId;
-                finaliseRekod(res.markah, res.butiran, false, true);
+                finaliseRekod(res.markah, res.butiran, false, res.ralat ? 'error' : true);
                 window.idUntukGanti = null;
                 paparAnalisisUI(); // Update senarai di background
                 
@@ -1822,7 +1838,7 @@ function paparAnalisisUI() {
                 </div>
                 <div class="flex items-center gap-2 mt-2">
                     <div class="text-[10px] bg-gray-100 text-gray-500 px-2.5 py-0.5 rounded-full inline-block font-medium w-max">Kelas: ${rekod.kelas || 'Kelas Umum'}</div>
-                    ${rekod.isAiVerified === true ? `<div class="text-[10px] bg-blue-50 text-blue-600 px-2.5 py-0.5 rounded-full inline-flex items-center gap-1 font-bold border border-blue-100"><svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>Disahkan AI</div>` : (rekod.isAiVerified === 'pending' ? `<div class="text-[10px] bg-orange-50 text-orange-600 px-2.5 py-0.5 rounded-full inline-flex items-center gap-1 font-bold border border-orange-100"><svg class="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>Disemak AI...</div>` : '')}
+                    ${rekod.isAiVerified === true ? `<div class="text-[10px] bg-blue-50 text-blue-600 px-2.5 py-0.5 rounded-full inline-flex items-center gap-1 font-bold border border-blue-100"><svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>Disahkan AI</div>` : (rekod.isAiVerified === 'pending' ? `<div class="text-[10px] bg-orange-50 text-orange-600 px-2.5 py-0.5 rounded-full inline-flex items-center gap-1 font-bold border border-orange-100"><svg class="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>Disemak AI...</div>` : (rekod.isAiVerified === 'error' ? `<div class="text-[10px] bg-red-50 text-red-600 px-2.5 py-0.5 rounded-full inline-flex items-center gap-1 font-bold border border-red-100"><svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>Terdapat Ralat (AI)</div>` : ''))}
                 </div>
             </div>
         `).join('');
