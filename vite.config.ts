@@ -12,7 +12,7 @@ export default defineConfig(({mode}) => {
       tailwindcss(),
       VitePWA({
         registerType: 'autoUpdate',
-        injectRegister: 'auto',
+        injectRegister: null,
         includeAssets: ['icon.svg', 'apple-touch-icon.png'],
         manifest: {
           name: 'CikguScan',
@@ -47,11 +47,6 @@ export default defineConfig(({mode}) => {
           globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
           navigateFallback: '/',
           cleanupOutdatedCaches: true
-        },
-        devOptions: {
-          enabled: true,
-          type: 'module',
-          navigateFallback: '/'
         }
       })
     ],
