@@ -1245,12 +1245,14 @@ async function verifikasiAI(imejBase64: string, imejNamaBase64: string | null, b
 
         const prompt = `Anda adalah sistem pengesahan jawapan OMR (Optical Mark Recognition) bernama CikguScan.
 Sistem tempatan telah menganalisis imej OMR ini dan mendapati jawapan berikut (sebagai panduan awal sahaja):
-${butiranAsal.map((b: any, i: number) => `S${i+1}: Jawapan yang dipilih ${b.jawapanPelajar === 'KOSONG' ? 'KOSONG' : b.jawapanPelajar} (Status Keputusan: ${b.betul ? 'BETUL' : 'SALAH'})`).join('\n')}
+${butiranAsal.map((b: any, i: number) => `S${i+1}: Jawapan yang dipilih ${b.jawapanPelajar === 'KOSONG' ? 'KOSONG' : b.jawapanPelajar}`).join('\n')}
 
 Sila semak semula gambar helaian OMR pelajar ini (serta keratan nama sekiranya ada) dan berikan ketepatan muktamad.
 Terdapat ${window.JUMLAH_SOALAN} soalan semuanya. Kertas ini mungkin mempunyai kecacatan (tersenget dsb). Jika pelajar bulatkan lebih dari satu pilihan, set statusnya sebagai BATAL. Jika tiada jawapan dibulatkan, status KOSONG. Siri markah asal daripada sistem tempatan adalah agak tepat. Anda hanya perlu membuat pembetulan logik jika ada kesilapan silau dan sebagainya.
 
-Sekiranya imej keratan nama disertakan, cuba baca dan teka tulisan tangan tersebut untuk mendapatkan nama pelajar (beserta nombor IC / kelas / maklumat lain di bahagian atas kertas).
+**MANDATORI OCR TULISAN TANGAN:**
+Sekiranya imej keratan nama disertakan, anda MESTI BACA DAN TEKA SEBAIK MUNGKIN tulisan tangan tersebut untuk mendapatkan nama pelajar, nombor kad pengenalan, nombor matrik, darjah/kelas, atau apa-apa maklumat bertulis di bahagian atas kertas. 
+Tuliskan maklumat tersebut ke dalam \`nama_pelajar\`. Jika tiada kesan dakwat langsung, barulah tinggalkan kosong.
 
 Skema Jawapan Sebenar:
 ${skemaPrompt}
@@ -1323,6 +1325,7 @@ PENTING:
                cleanText = cleanText.split('```')[1].split('```')[0].trim();
            }
            const json = JSON.parse(cleanText);
+           console.log("AI Verification Output:", json);
            let butiranBaru = [];
            let markah = 0;
            let diffCount = 0;
