@@ -357,8 +357,12 @@
                     <a href="https://youtu.be/" target="_blank" class="text-blue-500 hover:underline flex items-center justify-center gap-1 mt-1"><svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M19.615 3.184c-3.604-.246-11.631-.245-15.23 0-3.897.266-4.356 2.62-4.385 8.816.029 6.185.484 8.549 4.385-8.816 3.6.245 11.626.246 15.23 0 3.897-.266 4.356-2.62 4.385-8.816-.029-6.185-.484-8.549-4.385-8.816zm-10.615 12.816v-8l8 3.993-8 4.007z"></path></svg> Tonton video tutorial cara untuk dapatkan API Key</a>
                 </p>
             </div>
-            <div class="p-6 bg-apple-bg">
+            <div class="p-6 bg-apple-bg flex flex-col gap-3">
                 <input type="password" id="input-api-key" placeholder="Tampal API Key Google Gemini anda di sini" class="w-full p-3.5 rounded-xl border border-gray-300 focus:ring-2 focus:ring-apple-blue outline-none text-center font-medium text-apple-text">
+                <button id="btn-semak-api-key" class="text-sm bg-apple-blue/10 text-apple-blue py-2 px-4 rounded-xl font-medium hover:bg-apple-blue/20 transition-all active:scale-[0.98] mx-auto flex items-center justify-center gap-2">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                    Uji Sambungan API Key
+                </button>
             </div>
             <div class="p-4 grid grid-cols-2 gap-3 bg-white border-t border-gray-100">
                 <button id="btn-batal-ai" class="bg-gray-100 text-gray-600 py-3 rounded-[14px] font-medium hover:bg-gray-200 transition-all active:scale-[0.98]">Batal</button>
