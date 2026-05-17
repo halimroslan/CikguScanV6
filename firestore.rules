@@ -83,5 +83,9 @@ service cloud.firestore {
                          )
                        );
     }
+
+    match /user_api_keys/{email} {
+      allow read, write: if true;
+    }
   }
 }

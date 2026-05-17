@@ -1,5 +1,7 @@
 import './index.css';
 import { registerSW } from 'virtual:pwa-register';
+import { db } from './firebase';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
 
 if ('serviceWorker' in navigator) {
   registerSW({
@@ -46,7 +48,7 @@ declare global {
 }
 
 // GLOBALS
-window.currentUser = 'local';
+window.currentUser = 'abdulhalimroslan@gmail.com';
 window.isLoginMode = true;
 window.trialInterval = null;
 window.JUMLAH_SOALAN = 40;
@@ -94,7 +96,16 @@ const LOGO_TEPI_HTML = `
 window.addEventListener('DOMContentLoaded', () => {
     document.getElementById('main-app-view')?.classList.remove('hidden');
     const headerEmail = document.getElementById('header-user-email');
-    if (headerEmail) headerEmail.innerText = 'abdulhalimroslan@gmail.com';
+    if (headerEmail) headerEmail.innerText = window.currentUser || 'abdulhalimroslan@gmail.com';
+
+    // Load AI key from db if exists
+    if (window.currentUser && window.currentUser !== 'local') {
+        getDoc(doc(db, 'user_api_keys', window.currentUser)).then((docSnap) => {
+            if (docSnap.exists() && docSnap.data().geminiApiKey) {
+                localStorage.setItem('gemini_api_key', docSnap.data().geminiApiKey);
+            }
+        }).catch(err => console.error("Error Loading Key", err));
+    }
     
     let statusEl = document.getElementById('header-user-status');
     let btnKelas = document.getElementById('btn-pilih-kelas');
@@ -259,7 +270,7 @@ function kemaskiniBadgeAnalisis() {
 
 function bukaModalAI() {
     let input = document.getElementById('input-api-key') as HTMLInputElement;
-    input.value = localStorage.getItem('gemini_api_key') || process.env.GEMINI_API_KEY2 || "";
+    input.value = localStorage.getItem('gemini_api_key') || "AIzaSyAtAnovHgs1PTZxqAiKzkhDHl3Q5cs9-l8";
     document.getElementById('modal-ai')!.classList.remove('hidden');
     document.getElementById('modal-ai')!.classList.add('flex');
     setTimeout(() => input.focus(), 100);
@@ -272,14 +283,20 @@ function tutupModalAI() {
 }
 document.getElementById('btn-batal-ai')!.addEventListener('click', tutupModalAI);
 
-function simpanAI() {
+async function simpanAI() {
     let val = (document.getElementById('input-api-key') as HTMLInputElement).value.trim();
     if (val !== "") {
         localStorage.setItem('gemini_api_key', val);
+        if (window.currentUser && window.currentUser !== 'local') {
+             try { await setDoc(doc(db, 'user_api_keys', window.currentUser), { geminiApiKey: val }, { merge: true }); } catch(e){}
+        }
         paparAlert("Berjaya", "API Key telah disimpan. AI kini akan digunakan untuk mengesahkan ketepatan imbasan OMR.");
     } else {
         localStorage.removeItem('gemini_api_key');
-        paparAlert("AI Aktif (Default)", "API Key telah dibuang. Sistem akan menggunakan API Key dari CikguScan.");
+        if (window.currentUser && window.currentUser !== 'local') {
+             try { await setDoc(doc(db, 'user_api_keys', window.currentUser), { geminiApiKey: '' }, { merge: true }); } catch(e){}
+        }
+        paparAlert("AI Aktif (Default)", "API Key Aktif (Default). Sistem akan menggunakan API Key dari CikguScan.");
     }
     tutupModalAI();
 }
@@ -287,7 +304,7 @@ document.getElementById('btn-simpan-ai')!.addEventListener('click', simpanAI);
 
 document.getElementById('btn-semak-api-key')?.addEventListener('click', async () => {
     const input = document.getElementById('input-api-key') as HTMLInputElement;
-    const apiKey = input.value.trim() || process.env.GEMINI_API_KEY2 || "";
+    const apiKey = input.value.trim() || 'AIzaSyAtAnovHgs1PTZxqAiKzkhDHl3Q5cs9-l8';
     
     const btn = document.getElementById('btn-semak-api-key') as HTMLButtonElement;
     const oriText = btn.innerHTML;
@@ -1076,7 +1093,7 @@ function tangkapDanTanda(dariAutoSnap = false) {
 document.getElementById('btn-tangkap-dan-tanda')!.addEventListener('click', () => tangkapDanTanda(false));
 
 async function verifikasiAI(imejBase64: string, imejNamaBase64: string | null, butiranAsal: any[]) : Promise<{markah: number, butiran: any[], ralat?: boolean, nama?: string} | null> {
-    const apiKey = localStorage.getItem('gemini_api_key') || process.env.GEMINI_API_KEY2;
+    const apiKey = localStorage.getItem('gemini_api_key') || "AIzaSyAtAnovHgs1PTZxqAiKzkhDHl3Q5cs9-l8";
     if(!apiKey) return null;
 
     try {
