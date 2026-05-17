@@ -94,13 +94,14 @@ const LOGO_TEPI_HTML = `
 window.addEventListener('DOMContentLoaded', () => {
     document.getElementById('main-app-view')?.classList.remove('hidden');
     const headerEmail = document.getElementById('header-user-email');
-    if (headerEmail) headerEmail.innerText = 'Akaun PRO';
+    if (headerEmail) headerEmail.innerText = 'abdulhalimroslan@gmail.com';
     
     let statusEl = document.getElementById('header-user-status');
     let btnKelas = document.getElementById('btn-pilih-kelas');
     
     if (statusEl) {
-        statusEl.innerText = "";
+        statusEl.innerText = "Akaun PRO";
+        statusEl.classList.add("text-blue-600");
     }
     if (btnKelas) {
         btnKelas.parentElement!.classList.remove('hidden');
