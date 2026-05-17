@@ -1,0 +1,36 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile with Pro status",
+      "type": "object",
+      "properties": {
+        "email": {
+          "type": "string"
+        },
+        "isPro": {
+          "type": "boolean"
+        },
+        "lastLogin": {
+          "type": "timestamp"
+        },
+        "trialCompleted": {
+          "type": "boolean"
+        },
+        "proExpireAt": {
+          "type": "timestamp",
+          "description": "Optional expiration date for pro status"
+        }
+      },
+      "required": ["email", "isPro", "lastLogin"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": {
+        "$ref": "User"
+      },
+      "description": "User profiles"
+    }
+  }
+}

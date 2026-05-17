@@ -1,0 +1,87 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerifiedEmail() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() > 0 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function isAdmin() {
+      return isVerifiedEmail() && request.auth.token.email == 'abdulhalimroslan@gmail.com';
+    }
+
+    // -------------------------------------------------------------------------
+    // USERS
+    // -------------------------------------------------------------------------
+
+    function isValidUserCreate(data) {
+      return data.keys().hasAll(['email', 'isPro', 'lastLogin', 'trialCompleted']) &&
+             data.keys().size() <= 5 && // + proExpireAt (optional)
+             data.email == request.auth.token.email &&
+             data.isPro is bool &&
+             data.lastLogin == request.time &&
+             data.trialCompleted is bool &&
+             (
+               !('proExpireAt' in data) || data.proExpireAt == null || data.proExpireAt is timestamp
+             ) &&
+             (
+               (!data.isPro && !data.trialCompleted) || isAdmin()
+             );
+    }
+
+    function isValidUserUpdate(data, existingData) {
+      return data.keys().hasAll(['email', 'isPro', 'lastLogin']) &&
+             data.email == existingData.email &&
+             data.isPro is bool &&
+             data.lastLogin == request.time &&
+             (
+               !('trialCompleted' in data) || data.trialCompleted is bool
+             ) &&
+             (
+               !('proExpireAt' in data) || data.proExpireAt == null || data.proExpireAt is timestamp
+             );
+    }
+
+    match /users/{userId} {
+      allow get: if isVerifiedEmail() && request.auth.uid == userId;
+      allow create: if isVerifiedEmail() &&
+                       isValidId(userId) &&
+                       request.auth.uid == userId &&
+                       isValidUserCreate(incoming());
+      
+      allow update: if isVerifiedEmail() &&
+                       request.auth.uid == userId &&
+                       isValidUserUpdate(incoming(), existing()) &&
+                       (
+                         isAdmin() ||
+                         (
+                           incoming().diff(existing()).affectedKeys().hasOnly(['lastLogin', 'isPro', 'proExpireAt']) &&
+                           (
+                             (existing().isPro == true && incoming().isPro == false) ||
+                             (existing().isPro == false && incoming().isPro == false)
+                           )
+                         )
+                       );
+    }
+  }
+}

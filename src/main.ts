@@ -20,35 +20,8 @@ window.addEventListener('beforeinstallprompt', (e) => {
   deferredPrompt = e;
 });
 
-window.addEventListener('DOMContentLoaded', () => {
-    const installBtn = document.getElementById('btn-install-pwa');
-    if (installBtn) {
-        // Semak jika sudah diinstall
-        if (window.matchMedia('(display-mode: standalone)').matches || (window.navigator as any).standalone === true) {
-            installBtn.classList.add('hidden');
-        } else {
-            installBtn.classList.remove('hidden');
-        }
 
-        installBtn.addEventListener('click', async () => {
-            if (deferredPrompt) {
-                deferredPrompt.prompt();
-                const { outcome } = await deferredPrompt.userChoice;
-                if (outcome === 'accepted') {
-                    installBtn.classList.add('hidden');
-                }
-                deferredPrompt = null;
-            } else {
-                paparAlert("Cara Install PWA", "Disebabkan halangan pelayar, sila tekan butang tiga titik pada menu pelayar (Chrome/Safari) dan pilih 'Add to Home Screen' atau 'Install App'. Untuk pengalaman terbaik, buka pautan aplikasi ini di tab baharu.");
-            }
-        });
-    }
-});
 
-import { initializeApp } from "firebase/app";
-import { getAuth, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged, User } from "firebase/auth";
-import { getFirestore, doc, setDoc, getDoc, collection, getDocs, Timestamp } from "firebase/firestore";
-import firebaseConfig from "../firebase-applet-config.json";
 import { GoogleGenAI, Type } from "@google/genai";
 
 declare global {
@@ -72,13 +45,8 @@ declare global {
     }
 }
 
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
-
 // GLOBALS
-window.currentUser = null;
+window.currentUser = 'local';
 window.isLoginMode = true;
 window.trialInterval = null;
 window.JUMLAH_SOALAN = 40;
@@ -123,221 +91,26 @@ const LOGO_TEPI_HTML = `
     </div>
 `;
 
-function startTrialCountdown() {
-    if (window.trialInterval) clearInterval(window.trialInterval);
-    window.trialInterval = setInterval(() => {
-        if (!window.currentUser) {
-            clearInterval(window.trialInterval);
-            return;
-        }
-        let proBulan = parseInt(localStorage.getItem('cikguscan_pro_bulan_' + window.currentUser) as string) || 0;
-        let isPro = localStorage.getItem('cikguscan_is_pro_' + window.currentUser) === 'true';
-        if (proBulan > 0 || isPro) {
-            clearInterval(window.trialInterval);
-            return;
-        }
-        
-        let start = parseInt(localStorage.getItem('cikguscan_trial_start_' + window.currentUser) as string);
-        if (!start) return;
-
-        let now = Date.now();
-        let elap = Math.floor((now - start) / 1000);
-        let left = 3600 - elap;
-
-        let statusEl = document.getElementById('header-user-status');
-        let btnKelas = document.getElementById('btn-pilih-kelas');
-
-        if (left <= 0) {
-            clearInterval(window.trialInterval);
-            localStorage.setItem('cikguscan_trial_finished_' + window.currentUser, 'true');
-            signOut(auth).then(() => {
-                paparAlert("Tempoh Cubaan Tamat ⏱️", "Masa 60 minit percubaan Pro telah tamat. Anda dilog keluar secara automatik. Sila log masuk semula untuk meneruskan dengan akaun Percuma.", true);
-            });
-        } else {
-            if (statusEl) {
-                let m = Math.floor(left / 60);
-                let s = left % 60;
-                statusEl.innerText = `CUBAAN PRO (${m}m ${s}s)`;
-                statusEl.classList.remove('text-apple-textMuted', 'text-apple-blue');
-                statusEl.classList.add('text-orange-500');
-                if (btnKelas) btnKelas.parentElement!.classList.remove('hidden');
-            }
-        }
-    }, 1000);
-}
-
-async function checkAuthReal(user: any) {
-    if (window.trialInterval) {
-        clearInterval(window.trialInterval);
-        window.trialInterval = null;
-    }
-
-    if (user) {
-        window.currentUser = user.email;
-        
-        let developerBtn = document.getElementById('btn-developer');
-        if (developerBtn) {
-            if (user.email === 'abdulhalimroslan@gmail.com') {
-                developerBtn.classList.remove('hidden');
-                developerBtn.classList.add('flex');
-            } else {
-                developerBtn.classList.add('hidden');
-                developerBtn.classList.remove('flex');
-            }
-        }
-
-        // Save/Sync User in Firestore
-        try {
-            const userRef = doc(db, 'users', user.uid);
-            const userDoc = await getDoc(userRef);
-            let isPro = false;
-            let proExpireAt = null;
-
-            if (userDoc.exists()) {
-                const data = userDoc.data();
-                if (data.isPro) {
-                    // Check if expired
-                    if (data.proExpireAt && data.proExpireAt.toDate().getTime() > Date.now()) {
-                        isPro = true;
-                        proExpireAt = data.proExpireAt;
-                    } else if (data.proExpireAt && data.proExpireAt.toDate().getTime() <= Date.now()) {
-                        // Expired
-                        await setDoc(userRef, { isPro: false, proExpireAt: null }, { merge: true });
-                        isPro = false;
-                    } else {
-                        // isPro is true but no expiration, let's treat it as lifetime or admin override
-                        isPro = true;
-                    }
-                }
-            } else {
-                // First time login
-                await setDoc(userRef, {
-                    email: user.email,
-                    isPro: false,
-                    lastLogin: Timestamp.now(),
-                    trialCompleted: false
-                });
-            }
-
-            if (user.email === 'abdulhalimroslan@gmail.com') {
-                isPro = true;
-                await setDoc(userRef, { isPro: true, proExpireAt: null, lastLogin: Timestamp.now() }, { merge: true });
-            }
-
-            localStorage.setItem('cikguscan_is_pro_' + window.currentUser, isPro ? 'true' : 'false');
-            
-            // Calculate remaining trial or pro status
-            continueAuthFlow(isPro);
-
-        } catch (error) {
-            console.error(error);
-            // Fallback for UI if DB fails
-            continueAuthFlow(false);
-        }
-
-    } else {
-        window.currentUser = null;
-        document.getElementById('auth-view')!.classList.remove('hidden');
-        document.getElementById('auth-view')!.classList.add('flex');
-        document.getElementById('main-app-view')!.classList.add('hidden');
-        
-        let developerBtn = document.getElementById('btn-developer');
-        if (developerBtn) {
-            developerBtn.classList.add('hidden');
-            developerBtn.classList.remove('flex');
-        }
-    }
-}
-
-function continueAuthFlow(isProMode: boolean) {
-    document.getElementById('auth-view')!.classList.add('hidden');
-    document.getElementById('auth-view')!.classList.remove('flex');
-    document.getElementById('main-app-view')!.classList.remove('hidden');
-    document.getElementById('header-user-email')!.innerText = window.currentUser || '';
-
-    let proBulan = parseInt(localStorage.getItem('cikguscan_pro_bulan_' + window.currentUser) as any) || 0;
-    let trialFinished = localStorage.getItem('cikguscan_trial_finished_' + window.currentUser) === 'true';
-    let trialStart = localStorage.getItem('cikguscan_trial_start_' + window.currentUser);
+window.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('main-app-view')?.classList.remove('hidden');
+    const headerEmail = document.getElementById('header-user-email');
+    if (headerEmail) headerEmail.innerText = 'Akaun PRO';
     
-    let isTrialActive = false;
-    let secondsLeft = 0;
-
-    if (proBulan <= 0 && !isProMode && trialStart) {
-        let elapsed = Math.floor((Date.now() - parseInt(trialStart)) / 1000);
-        secondsLeft = 3600 - elapsed;
-
-        if (secondsLeft > 0) {
-            isTrialActive = true;
-            trialFinished = false; 
-            localStorage.setItem('cikguscan_trial_finished_' + window.currentUser, 'false');
-        } else {
-            localStorage.setItem('cikguscan_trial_finished_' + window.currentUser, 'true');
-            trialFinished = true;
-        }
-    }
-
     let statusEl = document.getElementById('header-user-status');
     let btnKelas = document.getElementById('btn-pilih-kelas');
     
     if (statusEl) {
-        if (proBulan > 0 || isProMode) {
-            statusEl.innerText = isProMode ? `AKAUN PRO (365 HARI)` : `AKAUN PRO (${proBulan} HARI)`;
-            statusEl.classList.remove('text-apple-textMuted', 'text-orange-500');
-            statusEl.classList.add('text-apple-blue');
-            if (btnKelas) btnKelas.parentElement!.classList.remove('hidden');
-        } else if (isTrialActive) {
-            let m = Math.floor(secondsLeft / 60);
-            let s = secondsLeft % 60;
-            statusEl.innerText = `CUBAAN PRO (${m}m ${s}s)`;
-            statusEl.classList.remove('text-apple-textMuted', 'text-apple-blue');
-            statusEl.classList.add('text-orange-500');
-            if (btnKelas) btnKelas.parentElement!.classList.remove('hidden');
-            startTrialCountdown();
-        } else {
-            statusEl.innerText = "AKAUN (PERCUMA)";
-            statusEl.classList.remove('text-apple-blue', 'text-orange-500');
-            statusEl.classList.add('text-apple-textMuted');
-            if (btnKelas) btnKelas.parentElement!.classList.add('hidden');
-        }
+        statusEl.innerText = "";
+    }
+    if (btnKelas) {
+        btnKelas.parentElement!.classList.remove('hidden');
     }
 
     initAppContent();
-}
-
-function checkAuth(user: any) {
-    checkAuthReal(user);
-}
-
-onAuthStateChanged(auth, (user) => {
-    checkAuth(user);
 });
 
-async function handleGoogleAuth() {
-    let btn = document.getElementById('auth-google-btn')!;
-    let textAsal = btn.innerHTML;
-    btn.innerHTML = `<svg class="animate-spin h-5 w-5 text-gray-700" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Log Masuk...`;
-    (btn as HTMLButtonElement).disabled = true;
-    btn.classList.add('opacity-50', 'cursor-not-allowed');
-
-    try {
-        const provider = new GoogleAuthProvider();
-        await signInWithPopup(auth, provider);
-    } catch (error: any) {
-        if (error.code !== 'auth/popup-closed-by-user') {
-            paparAlert("Log Masuk Gagal", error.message);
-        }
-    } finally {
-        btn.innerHTML = textAsal;
-        (btn as HTMLButtonElement).disabled = false;
-        btn.classList.remove('opacity-50', 'cursor-not-allowed');
-    }
-}
-document.getElementById('auth-google-btn')!.addEventListener('click', handleGoogleAuth);
-
 document.getElementById('btn-logout')!.addEventListener('click', () => {
-    paparConfirm("Log Keluar", "Adakah cikgu pasti mahu log keluar dari sistem CikguScan?", () => {
-        signOut(auth);
-    });
+    paparAlert("Info", "Anda menggunakan sistem secara tempatan (offline). Tiada sesi log masuk.");
 });
 
 window.addEventListener('afterprint', () => {
@@ -485,7 +258,7 @@ function kemaskiniBadgeAnalisis() {
 
 function bukaModalAI() {
     let input = document.getElementById('input-api-key') as HTMLInputElement;
-    input.value = localStorage.getItem('gemini_api_key') || "";
+    input.value = localStorage.getItem('gemini_api_key') || "AIzaSyAtAnovHgs1PTZxqAiKzkhDHl3Q5cs9-l8";
     document.getElementById('modal-ai')!.classList.remove('hidden');
     document.getElementById('modal-ai')!.classList.add('flex');
     setTimeout(() => input.focus(), 100);
@@ -505,7 +278,7 @@ function simpanAI() {
         paparAlert("Berjaya", "API Key telah disimpan. AI kini akan digunakan untuk mengesahkan ketepatan imbasan OMR.");
     } else {
         localStorage.removeItem('gemini_api_key');
-        paparAlert("AI Dinyahaktif", "API Key telah dibuang. Sistem akan kembali menggunakan pengiraan imbasan biasa secara offline.");
+        paparAlert("AI Aktif (Default)", "API Key telah dibuang. Sistem akan menggunakan API Key dari CikguScan.");
     }
     tutupModalAI();
 }
@@ -1278,7 +1051,7 @@ function tangkapDanTanda(dariAutoSnap = false) {
 document.getElementById('btn-tangkap-dan-tanda')!.addEventListener('click', () => tangkapDanTanda(false));
 
 async function verifikasiAI(imejBase64: string, imejNamaBase64: string | null, butiranAsal: any[]) : Promise<{markah: number, butiran: any[], ralat?: boolean, nama?: string} | null> {
-    const apiKey = localStorage.getItem('gemini_api_key');
+    const apiKey = localStorage.getItem('gemini_api_key') || "AIzaSyAtAnovHgs1PTZxqAiKzkhDHl3Q5cs9-l8";
     if(!apiKey) return null;
 
     try {
@@ -1542,24 +1315,11 @@ function analisisImej(sumberCanvas: HTMLCanvasElement) {
 
     let peratus = (markah / window.JUMLAH_SOALAN) * 100;
     let proBulan = parseInt(localStorage.getItem('cikguscan_pro_bulan_' + window.currentUser) as any) || 0;
-    let isPro = localStorage.getItem('cikguscan_is_pro_' + window.currentUser) === 'true';
-    let trialFinished = localStorage.getItem('cikguscan_trial_finished_' + window.currentUser) === 'true';
+    let isPro = true;
+    let trialFinished = false;
     let trialStart = localStorage.getItem('cikguscan_trial_start_' + window.currentUser);
     
-    if (!isPro && proBulan <= 0 && !trialFinished && !trialStart) {
-        trialStart = Date.now().toString();
-        localStorage.setItem('cikguscan_trial_start_' + window.currentUser, trialStart);
-        startTrialCountdown();
-        
-        let statusEl = document.getElementById('header-user-status');
-        let btnKelas = document.getElementById('btn-pilih-kelas');
-        if (statusEl) {
-            statusEl.innerText = `CUBAAN PRO (60m 0s)`;
-            statusEl.classList.remove('text-apple-textMuted', 'text-apple-blue');
-            statusEl.classList.add('text-orange-500');
-            if (btnKelas) btnKelas.parentElement!.classList.remove('hidden');
-        }
-    }
+    // Trial logic removed, isPro is true
 
     let isTrialActive = false;
     if (!isPro && proBulan <= 0 && !trialFinished && trialStart) {
@@ -1606,7 +1366,7 @@ function analisisImej(sumberCanvas: HTMLCanvasElement) {
         paparKeputusan(finalMarkah, finalButiran, isTukarTab);
     };
 
-    if (localStorage.getItem('gemini_api_key')) {
+    if (true) {
         let ind = document.getElementById('scan-indicator');
         if (ind) {
             ind.innerText = "Disimpan & AI sdg mengesahkan...";
@@ -1677,8 +1437,8 @@ function paparKeputusan(markah: number, butiran: any, isTukarTab: boolean = true
     if (isTukarTab) tukarTab('keputusan'); 
     let peratus = (markah / window.JUMLAH_SOALAN) * 100;
     let proBulan = parseInt(localStorage.getItem('cikguscan_pro_bulan_' + window.currentUser) as any) || 0;
-    let isPro = localStorage.getItem('cikguscan_is_pro_' + window.currentUser) === 'true';
-    let trialFinished = localStorage.getItem('cikguscan_trial_finished_' + window.currentUser) === 'true';
+    let isPro = true;
+    let trialFinished = false;
     let trialStart = localStorage.getItem('cikguscan_trial_start_' + window.currentUser);
     
     let isTrialActive = false;
@@ -1787,9 +1547,9 @@ document.getElementById('input-jumlah-soalan')!.addEventListener('change', kemas
 
 function tukarTab(idTab: string) {
     let proBulan = parseInt(localStorage.getItem('cikguscan_pro_bulan_' + window.currentUser) as any) || 0;
-    let trialFinished = localStorage.getItem('cikguscan_trial_finished_' + window.currentUser) === 'true';
+    let trialFinished = false;
     let trialStart = localStorage.getItem('cikguscan_trial_start_' + window.currentUser);
-    let isPro = localStorage.getItem('cikguscan_is_pro_' + window.currentUser) === 'true';
+    let isPro = true;
     
     let isTrialActive = false;
     if (proBulan <= 0 && !isPro && !trialFinished && trialStart) {
@@ -2390,112 +2150,7 @@ function updatePageOrientation(mode = 'omr') {
     }
 }
 
-async function openDeveloperPage() {
-    document.getElementById('main-app-view')!.classList.add('hidden');
-    document.getElementById('developer-view')!.classList.remove('hidden');
-    await loadDeveloperUsers();
-}
-
-document.getElementById('btn-developer')?.addEventListener('click', openDeveloperPage);
-
-document.getElementById('btn-dev-tutup')?.addEventListener('click', () => {
-    document.getElementById('developer-view')!.classList.add('hidden');
-    document.getElementById('main-app-view')!.classList.remove('hidden');
-});
-
-let allUsersData: any[] = [];
-
-async function loadDeveloperUsers() {
-    try {
-        const querySnapshot = await getDocs(collection(db, 'users'));
-        allUsersData = [];
-        const seenEmails = new Set();
-        querySnapshot.forEach((doc) => {
-            const data = doc.data();
-            data.uid = doc.id;
-            
-            if (data.email) {
-                if (!seenEmails.has(data.email)) {
-                    seenEmails.add(data.email);
-                    allUsersData.push(data);
-                } else {
-                    // Update existing if this one is Pro and the existing one isn't 
-                    const existingIndex = allUsersData.findIndex(u => u.email === data.email);
-                    if (existingIndex !== -1 && data.isPro && !allUsersData[existingIndex].isPro) {
-                        allUsersData[existingIndex] = data;
-                    }
-                }
-            }
-        });
-        renderDeveloperUsers();
-    } catch (error) {
-        console.error("Error loading users:", error);
-    }
-}
-
-document.getElementById('btn-dev-refresh')?.addEventListener('click', loadDeveloperUsers);
-
-document.getElementById('dev-search')?.addEventListener('input', renderDeveloperUsers);
-
-(window as any).toggleUserPro = async function(uid: string, toggleStatus: boolean) {
-    try {
-        const userRef = doc(db, 'users', uid);
-        if (toggleStatus) {
-            const expireDate = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000);
-            await setDoc(userRef, { isPro: true, proExpireAt: Timestamp.fromDate(expireDate) }, { merge: true });
-        } else {
-            await setDoc(userRef, { isPro: false, proExpireAt: null }, { merge: true });
-        }
-        await loadDeveloperUsers();
-    } catch (e) {
-        console.error(e);
-        paparAlert("Ralat", "Gagal mengemas kini status pengguna.");
-    }
-};
-
-function renderDeveloperUsers() {
-    const listEl = document.getElementById('dev-users-list');
-    if (!listEl) return;
-    const searchVal = (document.getElementById('dev-search') as HTMLInputElement)?.value.toLowerCase() || '';
-
-    let html = '';
-    const filtered = allUsersData.filter(u => u.email && u.email.toLowerCase().includes(searchVal));
-
-    filtered.forEach(u => {
-        let isPro = false;
-        let daysLeftText = '';
-        if (u.isPro) {
-            if (u.proExpireAt && u.proExpireAt.toDate().getTime() > Date.now()) {
-                isPro = true;
-                const days = Math.ceil((u.proExpireAt.toDate().getTime() - Date.now()) / (1000 * 60 * 60 * 24));
-                let expStr = u.proExpireAt.toDate().toLocaleDateString('ms-MY');
-                daysLeftText = `<span class="bg-blue-600 text-white text-[11px] px-2.5 py-0.5 rounded-full font-bold inline-block">PRO (${days} hari lagi)</span><div class="text-[11px] text-gray-400 mt-1 font-medium">Tamat: ${expStr}</div>`;
-            } else if (!u.proExpireAt) {
-                isPro = true;
-                daysLeftText = `<span class="bg-blue-600 text-white text-[11px] px-2.5 py-0.5 rounded-full font-bold inline-block">PRO (Lifetime)</span>`;
-            }
-        }
-        
-        let checkedAttr = isPro ? 'checked' : '';
-
-        html += `
-        <div class="bg-gray-50/20 rounded-[16px] p-4 sm:p-5 flex items-center justify-between border border-gray-200/80 shadow-sm transition-all hover:shadow-md">
-            <div>
-                <p class="font-bold text-gray-800 text-sm sm:text-base">${u.email}</p>
-                <div class="mt-1 flex flex-col items-start justify-center">
-                    ${isPro ? daysLeftText : `<span class="bg-gray-200 text-gray-500 text-[10px] sm:text-[11px] px-2.5 py-0.5 rounded-full font-bold tracking-wide uppercase">Percuma</span>`}
-                </div>
-            </div>
-            <label class="relative inline-flex items-center cursor-pointer">
-                <input type="checkbox" class="sr-only peer" ${checkedAttr} onchange="window.toggleUserPro('${u.uid}', this.checked)">
-                <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-            </label>
-        </div>
-        `;
-    });
-
-    listEl.innerHTML = html;
-}
+// Empty
 
 
 
