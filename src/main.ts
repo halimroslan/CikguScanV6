@@ -259,7 +259,7 @@ function kemaskiniBadgeAnalisis() {
 
 function bukaModalAI() {
     let input = document.getElementById('input-api-key') as HTMLInputElement;
-    input.value = localStorage.getItem('gemini_api_key') || "AIzaSyAtAnovHgs1PTZxqAiKzkhDHl3Q5cs9-l8";
+    input.value = localStorage.getItem('gemini_api_key') || process.env.GEMINI_API_KEY2 || "";
     document.getElementById('modal-ai')!.classList.remove('hidden');
     document.getElementById('modal-ai')!.classList.add('flex');
     setTimeout(() => input.focus(), 100);
@@ -287,7 +287,7 @@ document.getElementById('btn-simpan-ai')!.addEventListener('click', simpanAI);
 
 document.getElementById('btn-semak-api-key')?.addEventListener('click', async () => {
     const input = document.getElementById('input-api-key') as HTMLInputElement;
-    const apiKey = input.value.trim() || 'AIzaSyAtAnovHgs1PTZxqAiKzkhDHl3Q5cs9-l8';
+    const apiKey = input.value.trim() || process.env.GEMINI_API_KEY2 || "";
     
     const btn = document.getElementById('btn-semak-api-key') as HTMLButtonElement;
     const oriText = btn.innerHTML;
@@ -1076,7 +1076,7 @@ function tangkapDanTanda(dariAutoSnap = false) {
 document.getElementById('btn-tangkap-dan-tanda')!.addEventListener('click', () => tangkapDanTanda(false));
 
 async function verifikasiAI(imejBase64: string, imejNamaBase64: string | null, butiranAsal: any[]) : Promise<{markah: number, butiran: any[], ralat?: boolean, nama?: string} | null> {
-    const apiKey = localStorage.getItem('gemini_api_key') || "AIzaSyAtAnovHgs1PTZxqAiKzkhDHl3Q5cs9-l8";
+    const apiKey = localStorage.getItem('gemini_api_key') || process.env.GEMINI_API_KEY2;
     if(!apiKey) return null;
 
     try {
