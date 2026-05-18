@@ -63,18 +63,18 @@ service cloud.firestore {
     }
 
     match /users/{userId} {
-      allow get: if isVerifiedEmail() && request.auth.uid == userId;
+      allow read: if isVerifiedEmail() && (request.auth.uid == userId || isAdmin());
       allow create: if isVerifiedEmail() &&
                        isValidId(userId) &&
                        request.auth.uid == userId &&
                        isValidUserCreate(incoming());
       
       allow update: if isVerifiedEmail() &&
-                       request.auth.uid == userId &&
-                       isValidUserUpdate(incoming(), existing()) &&
                        (
                          isAdmin() ||
                          (
+                           request.auth.uid == userId &&
+                           isValidUserUpdate(incoming(), existing()) &&
                            incoming().diff(existing()).affectedKeys().hasOnly(['lastLogin', 'isPro', 'proExpireAt']) &&
                            (
                              (existing().isPro == true && incoming().isPro == false) ||
@@ -85,7 +85,7 @@ service cloud.firestore {
     }
 
     match /user_api_keys/{email} {
-      allow read, write: if true;
+      allow read, write: if request.auth != null && request.auth.token.email == email;
     }
   }
 }
