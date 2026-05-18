@@ -1,10 +1,13 @@
 if (window.location.hostname === "cikgu-scan.vercel.app") {
-  window.location.href = "https://cikguscan-414396564667.asia-southeast1.run.app" + window.location.pathname + window.location.search + window.location.hash;
+  window.location.href =
+    "https://cikguscan-414396564667.asia-southeast1.run.app" +
+    window.location.pathname +
+    window.location.search +
+    window.location.hash;
 }
 
 import "./index.css";
 import { registerSW } from "virtual:pwa-register";
-import { db, auth, googleProvider } from "./firebase";
 import {
   doc,
   getDoc,
@@ -14,8 +17,13 @@ import {
   getDocs,
   serverTimestamp,
   updateDoc,
+  deleteDoc,
+  orderBy,
+  writeBatch
 } from "firebase/firestore";
 import { signInWithPopup, signOut, onAuthStateChanged } from "firebase/auth";
+import { ref, uploadString, getDownloadURL, deleteObject } from "firebase/storage";
+import { db, auth, googleProvider, storage } from "./firebase";
 
 if ("serviceWorker" in navigator) {
   registerSW({
@@ -58,27 +66,49 @@ declare global {
     idUntukGanti: string | null;
     idRekodSemasa: string | null;
     mulaImbasSemulaRekod: (id: string) => void;
+    pentaksiranList: any[];
+    currentPentaksiranId: string | null;
+    editingPentaksiranId: string | null;
+    currentUserId: string | null;
+    telahSahkanImbasan: boolean;
   }
 }
 
 // GLOBALS
 window.currentUser = "local";
+window.currentUserId = null;
 window.isLoginMode = false;
 window.isPro = false;
 window.proExpireAt = null;
 window.trialInterval = null;
 window.JUMLAH_SOALAN = 40;
 window.PILIHAN = ["A", "B", "C", "D"];
+window.mulaImbasSemulaRekod = (id: string) => {
+  window.idUntukGanti = id;
+  let rekod = window.senaraiRekodKelas.find((r: any) => r.id === id);
+  if (rekod) {
+    window.kelasSemasa = rekod.namaKelas;
+    document.getElementById("btn-pilih-kelas")!.innerText =
+      "Kelas: " + window.kelasSemasa;
+  }
+  document.getElementById("modal-rekod")!.classList.add("hidden");
+  document.getElementById("modal-rekod")!.classList.remove("flex");
+  tukarTab("imbas");
+};
 window.skemaJawapan = Array(window.JUMLAH_SOALAN).fill(null);
 window.streamKamera = null;
 window.gelungKamera = null;
 window.isScanning = false;
+window.pentaksiranList = [];
+window.currentPentaksiranId = null;
+window.editingPentaksiranId = null;
 window.autoSnapCounter = 0;
 window.kelasSemasa = "Kelas Umum";
 window.modAnalisisSemasa = "individu";
 window.senaraiRekodKelas = [];
 window.idUntukGanti = null;
 window.idRekodSemasa = null;
+window.telahSahkanImbasan = false;
 
 const CONFIG_IMBASAN = {
   // 1. Parameter Kamera & Bingkai
@@ -120,6 +150,7 @@ window.addEventListener("DOMContentLoaded", () => {
 
     if (user && user.email) {
       window.currentUser = user.email;
+      window.currentUserId = user.uid;
       window.isLoginMode = true;
       if (headerEmail) headerEmail.innerText = user.email;
 
@@ -195,6 +226,7 @@ window.addEventListener("DOMContentLoaded", () => {
         .catch((err) => console.error("Error Loading Key", err));
     } else {
       window.currentUser = "local";
+      window.currentUserId = null;
       window.isLoginMode = false;
       if (headerEmail) headerEmail.innerText = "Sila log masuk";
       if (loginBtn) loginBtn.classList.remove("hidden");
@@ -265,6 +297,9 @@ document
           const data = docSnap.data();
           const uid = docSnap.id;
           const email = data.email || "Unknown";
+          
+          if (email.toLowerCase() === "abdulhalimroslan@gmail.com") return;
+
           const isPro = data.isPro || false;
 
           let proDetail = "";
@@ -277,19 +312,51 @@ document
 
           const div = document.createElement("div");
           div.className =
-            "flex items-center justify-between p-4 bg-gray-50 rounded-2xl border border-gray-100";
+            "flex items-center justify-between p-4 bg-gray-50 rounded-2xl border border-gray-100 admin-user-item";
+          div.setAttribute("data-email", email.toLowerCase());
           div.innerHTML = `
           <div>
             <div class="font-medium text-apple-text">${email}</div>
             ${proDetail}
           </div>
-          <label class="relative inline-flex items-center cursor-pointer">
-            <input type="checkbox" class="sr-only peer admin-pro-toggle" data-uid="${uid}" data-email="${email}" ${isPro ? "checked" : ""}>
-            <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-          </label>
+          <div class="flex items-center gap-3">
+            <label class="relative inline-flex items-center cursor-pointer">
+              <input type="checkbox" class="sr-only peer admin-pro-toggle" data-uid="${uid}" data-email="${email}" ${isPro ? "checked" : ""}>
+              <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+            </label>
+            <div class="flex items-center gap-1">
+              <button class="w-8 h-8 rounded-full bg-red-100 text-red-500 hover:bg-red-200 flex justify-center items-center admin-delete-user" title="Padam Pengguna">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+              </button>
+              <button class="hidden px-3 py-1 bg-red-500 text-white text-xs font-semibold rounded-full hover:bg-red-600 admin-confirm-delete" data-uid="${uid}" data-email="${email}">Sah Padam</button>
+              <button class="hidden w-8 h-8 rounded-full bg-gray-100 text-gray-500 hover:bg-gray-200 justify-center items-center admin-cancel-delete" title="Batal">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+              </button>
+            </div>
+          </div>
         `;
           listContainer.appendChild(div);
         });
+
+        // Search Input Filtering
+        const searchInput = document.getElementById(
+          "admin-search-input",
+        ) as HTMLInputElement;
+        if (searchInput) {
+          searchInput.value = "";
+          searchInput.addEventListener("input", (e) => {
+            const val = (e.target as HTMLInputElement).value.toLowerCase();
+            document.querySelectorAll(".admin-user-item").forEach((item) => {
+              const el = item as HTMLElement;
+              const emel = el.getAttribute("data-email") || "";
+              if (emel.includes(val)) {
+                el.style.display = "flex";
+              } else {
+                el.style.display = "none";
+              }
+            });
+          });
+        }
 
         // Bind toggle events
         document.querySelectorAll(".admin-pro-toggle").forEach((el) => {
@@ -319,6 +386,64 @@ document
               target.checked = !target.checked; // revert UI
               paparAlert("Ralat", "Gagal mengemaskini status PRO.");
             } finally {
+              target.disabled = false;
+            }
+          });
+        });
+
+        // Bind delete events
+        document.querySelectorAll(".admin-delete-user").forEach((btn) => {
+          btn.addEventListener("click", (e) => {
+            const target = e.currentTarget as HTMLButtonElement;
+            const container = target.parentElement;
+            if (!container) return;
+
+            target.classList.add("hidden");
+            container
+              .querySelector(".admin-confirm-delete")
+              ?.classList.remove("hidden");
+            container
+              .querySelector(".admin-cancel-delete")
+              ?.classList.remove("hidden");
+            container
+              .querySelector(".admin-cancel-delete")
+              ?.classList.add("flex");
+          });
+        });
+
+        document.querySelectorAll(".admin-cancel-delete").forEach((btn) => {
+          btn.addEventListener("click", (e) => {
+            const target = e.currentTarget as HTMLButtonElement;
+            const container = target.parentElement;
+            if (!container) return;
+
+            target.classList.add("hidden");
+            target.classList.remove("flex");
+            container
+              .querySelector(".admin-confirm-delete")
+              ?.classList.add("hidden");
+            container
+              .querySelector(".admin-delete-user")
+              ?.classList.remove("hidden");
+          });
+        });
+
+        document.querySelectorAll(".admin-confirm-delete").forEach((btn) => {
+          btn.addEventListener("click", async (e) => {
+            const target = e.currentTarget as HTMLButtonElement;
+            const uid = target.getAttribute("data-uid");
+            const email = target.getAttribute("data-email");
+            if (!uid || !email) return;
+
+            target.disabled = true;
+            try {
+              await deleteDoc(doc(db, "users", uid));
+              target.closest(".admin-user-item")?.remove();
+              // also delete their user_api_keys ?
+              await deleteDoc(doc(db, "user_api_keys", email));
+            } catch (err) {
+              console.error(err);
+              paparAlert("Ralat", "Gagal memadam pengguna.");
               target.disabled = false;
             }
           });
@@ -353,44 +478,13 @@ window.addEventListener("afterprint", () => {
 });
 
 function initAppContent() {
-  let savedSoalan = localStorage.getItem(
-    "cikguscan_jumlah_" + window.currentUser,
-  );
-  if (savedSoalan) {
-    window.JUMLAH_SOALAN = parseInt(savedSoalan);
-    (document.getElementById("input-jumlah-soalan") as HTMLInputElement).value =
-      window.JUMLAH_SOALAN.toString();
-  } else {
-    window.JUMLAH_SOALAN = 40;
-    (document.getElementById("input-jumlah-soalan") as HTMLInputElement).value =
-      "40";
-  }
-
-  let savedSkema = localStorage.getItem(
-    "cikguscan_skema_" + window.currentUser,
-  );
-  if (savedSkema) {
-    window.skemaJawapan = JSON.parse(savedSkema);
-    if (window.skemaJawapan.length !== window.JUMLAH_SOALAN) {
-      let temp = Array(window.JUMLAH_SOALAN).fill(null);
-      for (
-        let i = 0;
-        i < Math.min(window.skemaJawapan.length, window.JUMLAH_SOALAN);
-        i++
-      ) {
-        temp[i] = window.skemaJawapan[i];
-      }
-      window.skemaJawapan = temp;
-    }
-  } else {
-    window.skemaJawapan = Array(window.JUMLAH_SOALAN).fill(null);
-  }
-
-  muatRekodLokal();
-  updatePageOrientation();
-  janaBorangSkema();
-  janaBorangCetak();
-  tukarTab("skema");
+  muatSenaraiPentaksiran().then(() => {
+    muatRekodLokal();
+    updatePageOrientation();
+    janaBorangSkema();
+    janaBorangCetak();
+    tukarTab("skema");
+  });
 }
 
 function paparAlert(title: string, msg: string, isProAlert = false) {
@@ -446,7 +540,7 @@ document
   .getElementById("btn-confirm-batal")!
   .addEventListener("click", tutupConfirm);
 
-function muatRekodLokal() {
+async function muatRekodLokal() {
   let data = localStorage.getItem(
     "cikguscan_rekod_kelas_" + window.currentUser,
   );
@@ -460,6 +554,62 @@ function muatRekodLokal() {
     window.senaraiRekodKelas = [];
   }
   kemaskiniBadgeAnalisis();
+
+  if (window.currentUserId && window.currentUser !== "local") {
+    try {
+      const q = query(collection(db, "users", window.currentUserId, "rekods"));
+      const snapshot = await getDocs(q);
+      const cloudRecords = snapshot.docs.map(doc => doc.data());
+      if (cloudRecords.length > 0) {
+        // Sync cloud into local storage
+        window.senaraiRekodKelas = cloudRecords.sort((a, b) => parseInt(b.id) - parseInt(a.id));
+        localStorage.setItem("cikguscan_rekod_kelas_" + window.currentUser, JSON.stringify(window.senaraiRekodKelas));
+        kemaskiniBadgeAnalisis();
+      }
+    } catch (err) {
+      console.error("Error loading cloud records", err);
+    }
+  }
+}
+
+async function syncRekodKeCloud(rekod: any) {
+  if (!window.currentUserId || window.currentUser === "local") return;
+
+  const rekodToSave = { ...rekod };
+  
+  if (rekodToSave.imejNama && rekodToSave.imejNama.startsWith("data:image")) {
+    try {
+      const imejNamaRef = ref(storage, `users/${window.currentUserId}/rekods/${rekod.id}_nama.jpg`);
+      await uploadString(imejNamaRef, rekodToSave.imejNama, "data_url");
+      rekodToSave.imejNama = await getDownloadURL(imejNamaRef);
+    } catch(e) { console.error("Err img", e); }
+  }
+
+  const firestoreDocData = { ...rekodToSave };
+  delete firestoreDocData.imejPenuh; // Do not save the full image to Firestore
+
+  const docRef = doc(db, "users", window.currentUserId, "rekods", rekod.id);
+  await setDoc(docRef, firestoreDocData);
+
+  const index = window.senaraiRekodKelas.findIndex((r: any) => r.id === rekod.id);
+  if (index > -1) {
+    window.senaraiRekodKelas[index] = rekodToSave;
+    localStorage.setItem(
+      "cikguscan_rekod_kelas_" + window.currentUser,
+      JSON.stringify(window.senaraiRekodKelas),
+    );
+  }
+}
+
+async function deleteRekodDariCloud(id: string) {
+  if (!window.currentUserId || window.currentUser === "local") return;
+  try {
+    await deleteDoc(doc(db, "users", window.currentUserId, "rekods", id));
+    try { await deleteObject(ref(storage, `users/${window.currentUserId}/rekods/${id}_nama.jpg`)); } catch(e){}
+    try { await deleteObject(ref(storage, `users/${window.currentUserId}/rekods/${id}_penuh.jpg`)); } catch(e){}
+  } catch (err) {
+    console.error("Failed to delete record from cloud", err);
+  }
 }
 
 function simpanRekodLokal() {
@@ -475,9 +625,11 @@ function mintaSahkanPadamSemua() {
     "Padam Semua Data",
     "Cikgu pasti mahu memadam semua rekod imbasan dalam sistem?",
     () => {
+      let currentIds = window.senaraiRekodKelas.map((r:any) => r.id);
       window.senaraiRekodKelas = [];
       simpanRekodLokal();
       paparAnalisisUI();
+      currentIds.forEach((id: string) => deleteRekodDariCloud(id));
     },
   );
 }
@@ -496,6 +648,7 @@ document
       );
       simpanRekodLokal();
       paparAnalisisUI();
+      deleteRekodDariCloud(id);
     },
   );
 };
@@ -506,12 +659,14 @@ function mintaSahkanPadamSemasa() {
       "Buang Imbasan Ini",
       "Data ini akan dibuang dan tidak dimasukkan ke dalam tab Analisis. Teruskan?",
       () => {
+        let deletedId = window.idRekodSemasa;
         window.senaraiRekodKelas = window.senaraiRekodKelas.filter(
           (r: any) => r.id !== window.idRekodSemasa,
         );
         simpanRekodLokal();
         window.idRekodSemasa = null;
         tukarTab("imbas");
+        if (deletedId) deleteRekodDariCloud(deletedId);
       },
     );
   }
@@ -625,6 +780,17 @@ document
   });
 
 function bukaModalKelas() {
+  let modalSelect = document.getElementById("modal-select-pentaksiran") as HTMLSelectElement;
+  if (modalSelect) {
+    modalSelect.innerHTML =
+      window.pentaksiranList
+        .map((p) => `<option value="${p.id}">${p.nama}</option>`)
+        .join("") || `<option value="">Tiada Pentaksiran. Sila cipta di tab skema.</option>`;
+    if (window.currentPentaksiranId) {
+      modalSelect.value = window.currentPentaksiranId;
+    }
+  }
+
   let input = document.getElementById("input-nama-kelas") as HTMLInputElement;
   input.value = window.kelasSemasa === "Kelas Umum" ? "" : window.kelasSemasa;
   document.getElementById("modal-kelas")!.classList.remove("hidden");
@@ -664,11 +830,31 @@ document
   .addEventListener("click", tutupModalKelas);
 
 function simpanKelas() {
+  let modalSelect = document.getElementById("modal-select-pentaksiran") as HTMLSelectElement;
+  let pid = modalSelect ? modalSelect.value : "";
+  if (pid === "" && window.pentaksiranList.length > 0) {
+    paparAlert("Perhatian", "Sila pilih pentaksiran terlebih dahulu.");
+    return;
+  }
+
   let val = (
     document.getElementById("input-nama-kelas") as HTMLInputElement
   ).value.trim();
   if (val !== "") {
     window.kelasSemasa = val;
+    window.telahSahkanImbasan = true;
+    
+    if (pid !== "") {
+      window.currentPentaksiranId = pid;
+      const p = window.pentaksiranList.find((x: any) => x.id === pid);
+      if (p) {
+        window.JUMLAH_SOALAN = p.jumlahSoalan;
+        window.skemaJawapan = [...p.skemaJawapan];
+      }
+      const mainSelect = document.getElementById("select-pentaksiran") as HTMLSelectElement;
+      if (mainSelect) mainSelect.value = pid;
+    }
+
     document.getElementById("btn-pilih-kelas")!.innerText =
       "Kelas: " + window.kelasSemasa;
     document.getElementById("modal-kelas")!.classList.add("hidden");
@@ -677,7 +863,7 @@ function simpanKelas() {
 
     let tabImbas = document.getElementById("tab-imbas")!;
     if (!tabImbas.classList.contains("hidden")) {
-      setTimeout(() => mulakanKamera(), 100);
+      setTimeout(() => mulakanKamera(true), 100);
     }
   } else {
     paparAlert(
@@ -1351,7 +1537,19 @@ function dapatkanGeometriOMR40(cw: number, ch: number) {
   };
 }
 
-async function mulakanKamera() {
+async function mulakanKamera(skipConfirm: boolean = false) {
+  if (!skipConfirm && !window.telahSahkanImbasan) {
+    if (window.pentaksiranList.length === 0) {
+      if (document.getElementById("tab-imbas")?.classList.contains("flex")) {
+        paparAlert("Tiada Pentaksiran", "Sila cipta pentaksiran terlebih dahulu pada tab Skema.", true);
+        tukarTab("skema");
+      }
+      return;
+    }
+    bukaModalKelas();
+    return;
+  }
+
   const video = document.getElementById("kamera") as HTMLVideoElement;
   const ind = document.getElementById("scan-indicator")!;
   ind.innerText = "Mengimbas OMR...";
@@ -2032,15 +2230,29 @@ function analisisImej(sumberCanvas: HTMLCanvasElement) {
   ) => {
     let finalPeratus = (finalMarkah / window.JUMLAH_SOALAN) * 100;
     if (isPro || proBulan > 0 || isTrialActive) {
+      let existingRekod = null;
+      if (window.idUntukGanti) {
+        existingRekod = window.senaraiRekodKelas.find((r:any) => r.id === window.idUntukGanti);
+      }
+
+      let finalImejNama = imejNamaDataUrl;
+      let finalImejPenuh = imejPenuhDataUrl;
+
+      if (existingRekod) {
+        if (existingRekod.imejNama && existingRekod.imejNama.startsWith("http")) finalImejNama = existingRekod.imejNama;
+        if (existingRekod.imejPenuh && existingRekod.imejPenuh.startsWith("http")) finalImejPenuh = existingRekod.imejPenuh;
+      }
+
       let rekodBaharu: any = {
         id: window.idUntukGanti ? window.idUntukGanti : Date.now().toString(),
         markah: finalMarkah,
         jumlah: window.JUMLAH_SOALAN,
         peratus: parseFloat(finalPeratus.toFixed(1)),
-        imejNama: imejNamaDataUrl,
-        imejPenuh: imejPenuhDataUrl,
+        imejNama: finalImejNama,
+        imejPenuh: finalImejPenuh,
         butiran: finalButiran,
         kelas: window.kelasSemasa,
+        pentaksiranId: window.currentPentaksiranId || "umum",
         isAiVerified: isAiVerified,
       };
       if (namaDiramal) {
@@ -2063,6 +2275,7 @@ function analisisImej(sumberCanvas: HTMLCanvasElement) {
       }
 
       simpanRekodLokal();
+      syncRekodKeCloud(rekodBaharu).catch(e => console.error(e));
     } else {
       window.idRekodSemasa = null;
     }
@@ -2435,10 +2648,15 @@ function paparAnalisisUI() {
   ) as HTMLSelectElement;
   let filterValue = dropdown ? dropdown.value : "Semua";
 
+  let baseRecords = window.senaraiRekodKelas;
+  if (window.currentPentaksiranId) {
+    baseRecords = window.senaraiRekodKelas.filter(
+      (r: any) => (r.pentaksiranId || "umum") === window.currentPentaksiranId,
+    );
+  }
+
   let kelass = [
-    ...new Set(
-      window.senaraiRekodKelas.map((r: any) => r.kelas || "Kelas Umum"),
-    ),
+    ...new Set(baseRecords.map((r: any) => r.kelas || "Kelas Umum")),
   ];
   if (dropdown) {
     let optionsHtml = `<option value="Semua">Semua Kelas</option>`;
@@ -2448,9 +2666,9 @@ function paparAnalisisUI() {
     dropdown.innerHTML = optionsHtml;
   }
 
-  let filteredRecords = window.senaraiRekodKelas;
+  let filteredRecords = baseRecords;
   if (filterValue !== "Semua") {
-    filteredRecords = window.senaraiRekodKelas.filter(
+    filteredRecords = baseRecords.filter(
       (r: any) => (r.kelas || "Kelas Umum") === filterValue,
     );
   }
@@ -2869,7 +3087,295 @@ function janaBorangSkema() {
   }
 }
 
-function simpanSkema() {
+// --- PENTAKSIRAN LOGIC ---
+async function muatSenaraiPentaksiran() {
+  if (window.currentUserId) {
+    try {
+      const q = query(
+        collection(db, "users", window.currentUserId, "pentaksirans"),
+      );
+      const snapshot = await getDocs(q);
+      window.pentaksiranList = snapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
+    } catch (e) {
+      console.error("Gagal muat pentaksiran", e);
+      window.pentaksiranList = [];
+    }
+  } else {
+    window.pentaksiranList = JSON.parse(
+      localStorage.getItem("cikguscan_pentaksirans_local") || "[]",
+    );
+  }
+
+  // Pre-select first pentaksiran if none selected
+  if (!window.currentPentaksiranId && window.pentaksiranList.length > 0) {
+    window.currentPentaksiranId = window.pentaksiranList[0].id;
+    window.JUMLAH_SOALAN = window.pentaksiranList[0].jumlahSoalan;
+    window.skemaJawapan = [...window.pentaksiranList[0].skemaJawapan];
+  }
+
+  renderPentaksiranList();
+  renderAnalisisPentaksiranList();
+  updateSelectPentaksiranDropdown();
+}
+
+function renderPentaksiranList() {
+  const container = document.getElementById("pentaksiran-list-container");
+  if (!container) return;
+
+  if (window.pentaksiranList.length === 0) {
+    container.innerHTML = `<div class="text-center text-apple-textMuted mt-10">Belum ada pentaksiran. Klik Tambah untuk bermula.</div>`;
+    return;
+  }
+
+  container.innerHTML = window.pentaksiranList
+    .map(
+      (p) => `
+    <div class="bg-white rounded-2xl p-4 sm:p-5 flex items-center justify-between shadow-sm border border-apple-border/50 hover:border-apple-border hover:shadow-md cursor-pointer transition-all pentaksiran-item" data-id="${p.id}">
+      <div class="flex-1">
+        <h3 class="font-bold text-apple-text text-lg">${p.nama}</h3>
+        <p class="text-sm text-apple-textMuted">${p.jumlahSoalan} Soalan</p>
+      </div>
+      <div class="flex items-center space-x-2">
+        <div class="p-2 text-apple-textMuted hover:text-red-500 transition-colors btn-delete-pentaksiran" data-id="${p.id}" title="Padam">
+          <svg fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
+          </svg>
+        </div>
+        <svg class="w-5 h-5 text-apple-textMuted" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+      </div>
+    </div>
+  `,
+    )
+    .join("");
+
+  document.querySelectorAll(".pentaksiran-item").forEach((item) => {
+    item.addEventListener("click", (e) => {
+      if ((e.target as HTMLElement).closest('.btn-delete-pentaksiran')) return;
+      const id = item.getAttribute("data-id");
+      openPentaksiranForm(id);
+    });
+  });
+
+  document.querySelectorAll(".btn-delete-pentaksiran").forEach((btn) => {
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const id = btn.getAttribute("data-id");
+      if (id) hapusPentaksiran(id);
+    });
+  });
+}
+
+function hapusPentaksiran(id: string) {
+  paparConfirm("Padam Pentaksiran", "Adakah Cikgu pasti mahu memadam pentaksiran ini? Semua rekod yang berkaitan juga mungkin terjejas.", async () => {
+    if (window.currentUserId) {
+      try {
+        await deleteDoc(doc(db, "users", window.currentUserId, "pentaksirans", id));
+      } catch (err) {
+        paparAlert("Ralat", "Gagal memadam dari pangkalan data awan.");
+      }
+    }
+    
+    window.pentaksiranList = window.pentaksiranList.filter(p => p.id !== id);
+    
+    if (!window.currentUserId) {
+      localStorage.setItem("cikguscan_pentaksirans_local", JSON.stringify(window.pentaksiranList));
+    }
+    
+    if (window.currentPentaksiranId === id) {
+      window.currentPentaksiranId = null;
+      if (window.pentaksiranList.length > 0) {
+        window.currentPentaksiranId = window.pentaksiranList[0].id;
+        window.JUMLAH_SOALAN = window.pentaksiranList[0].jumlahSoalan;
+        window.skemaJawapan = [...window.pentaksiranList[0].skemaJawapan];
+      }
+    }
+    
+    renderPentaksiranList();
+    renderAnalisisPentaksiranList();
+    updateSelectPentaksiranDropdown();
+  });
+}
+
+function renderAnalisisPentaksiranList() {
+  const container = document.getElementById("analisis-pentaksiran-list");
+  if (!container) return;
+
+  if (window.pentaksiranList.length === 0) {
+    container.innerHTML = `<div class="text-center text-apple-textMuted mt-10">Belum ada pentaksiran.</div>`;
+    return;
+  }
+
+  container.innerHTML = window.pentaksiranList
+    .map(
+      (p) => `
+    <div class="bg-white rounded-2xl p-4 sm:p-5 flex items-center justify-between shadow-sm border border-apple-border/50 hover:border-apple-border hover:shadow-md cursor-pointer transition-all analisis-pentaksiran-item" data-id="${p.id}">
+      <div>
+        <h3 class="font-bold text-apple-text text-lg">${p.nama}</h3>
+        <p class="text-sm text-apple-textMuted">${p.jumlahSoalan} Soalan</p>
+      </div>
+      <div class="bg-apple-blue/10 text-apple-blue p-2 rounded-full">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
+      </div>
+    </div>
+  `,
+    )
+    .join("");
+
+  document.querySelectorAll(".analisis-pentaksiran-item").forEach((item) => {
+    item.addEventListener("click", () => {
+      const id = item.getAttribute("data-id");
+      openAnalisisDetails(id);
+    });
+  });
+}
+
+function updateSelectPentaksiranDropdown() {
+  const select = document.getElementById(
+    "select-pentaksiran",
+  ) as HTMLSelectElement;
+  if (!select) return;
+
+  select.innerHTML =
+    window.pentaksiranList
+      .map((p) => `<option value="${p.id}">${p.nama}</option>`)
+      .join("") || `<option value="">Pilih Pentaksiran...</option>`;
+
+  if (window.currentPentaksiranId) {
+    select.value = window.currentPentaksiranId;
+  }
+
+  select.addEventListener("change", (e) => {
+    const id = (e.target as HTMLSelectElement).value;
+    window.currentPentaksiranId = id;
+    window.telahSahkanImbasan = false;
+    const p = window.pentaksiranList.find((x) => x.id === id);
+    if (p) {
+      window.JUMLAH_SOALAN = p.jumlahSoalan;
+      window.skemaJawapan = [...p.skemaJawapan];
+      // Muat semula rekod untuk pentaksiran ini dalam analisis?
+      muatRekodLokal(); // Assume we filter later if needed, right now let's just refresh.
+      
+      let tabImbas = document.getElementById("tab-imbas")!;
+      if (!tabImbas.classList.contains("hidden")) {
+        hentikanKamera();
+        setTimeout(() => mulakanKamera(), 100);
+      }
+    }
+  });
+}
+
+function openPentaksiranForm(id: string | null = null) {
+  document.getElementById("pentaksiran-list-view")?.classList.add("hidden");
+  const formView = document.getElementById("pentaksiran-form-view");
+  formView?.classList.remove("hidden");
+
+  const title = document.getElementById("pentaksiran-form-title")!;
+  const inputNama = document.getElementById(
+    "input-nama-pentaksiran",
+  ) as HTMLInputElement;
+  const tetapanContainer = document.getElementById(
+    "tetapan-penskoran-container",
+  )!;
+
+  tetapanContainer.classList.add("hidden"); // Collapse by default
+
+  window.editingPentaksiranId = id;
+
+  if (id) {
+    const p = window.pentaksiranList.find((x) => x.id === id);
+    if (p) {
+      title.innerText = "Edit Pentaksiran";
+      inputNama.value = p.nama;
+      window.JUMLAH_SOALAN = p.jumlahSoalan;
+      window.skemaJawapan = [...p.skemaJawapan];
+
+      const inputJumlah = document.getElementById(
+        "input-jumlah-soalan",
+      ) as HTMLInputElement;
+      if (inputJumlah) inputJumlah.value = p.jumlahSoalan.toString();
+    }
+  } else {
+    title.innerText = "Tambah Pentaksiran";
+    inputNama.value = "";
+    window.JUMLAH_SOALAN = 40;
+    window.skemaJawapan = Array(40).fill(null);
+    const inputJumlah = document.getElementById(
+      "input-jumlah-soalan",
+    ) as HTMLInputElement;
+    if (inputJumlah) inputJumlah.value = "40";
+  }
+
+  janaBorangSkema();
+}
+
+function updateSelectPentaksiranDropdownSync() {
+  const select = document.getElementById(
+    "select-pentaksiran",
+  ) as HTMLSelectElement;
+  if (select && window.currentPentaksiranId) {
+    select.value = window.currentPentaksiranId;
+  }
+}
+
+function openAnalisisDetails(id: string | null) {
+  document.getElementById("analisis-list-view")?.classList.add("hidden");
+  document.getElementById("analisis-details-view")?.classList.remove("hidden");
+  document.getElementById("analisis-details-view")?.classList.add("flex");
+
+  if (id) {
+    const p = window.pentaksiranList.find((x) => x.id === id);
+    if (p) {
+      document.getElementById("analisis-details-title")!.innerText = p.nama;
+      window.currentPentaksiranId = id;
+      window.JUMLAH_SOALAN = p.jumlahSoalan;
+      window.skemaJawapan = [...p.skemaJawapan];
+      updateSelectPentaksiranDropdownSync();
+      paparAnalisisUI();
+    }
+  }
+}
+
+document
+  .getElementById("btn-tambah-pentaksiran")
+  ?.addEventListener("click", () => openPentaksiranForm(null));
+document
+  .getElementById("btn-back-pentaksiran")
+  ?.addEventListener("click", () => {
+    document.getElementById("pentaksiran-form-view")?.classList.add("hidden");
+    document
+      .getElementById("pentaksiran-list-view")
+      ?.classList.remove("hidden");
+  });
+document.getElementById("btn-back-analisis")?.addEventListener("click", () => {
+  document.getElementById("analisis-details-view")?.classList.remove("flex");
+  document.getElementById("analisis-details-view")?.classList.add("hidden");
+  document.getElementById("analisis-list-view")?.classList.remove("hidden");
+});
+document
+  .getElementById("btn-show-tetapan-penskoran")
+  ?.addEventListener("click", () => {
+    document
+      .getElementById("tetapan-penskoran-container")
+      ?.classList.toggle("hidden");
+  });
+
+// Original simpanSkema code starts below
+async function simpanSkema() {
+  const inputNama = document.getElementById(
+    "input-nama-pentaksiran",
+  ) as HTMLInputElement;
+  const namaPentaksiran = inputNama
+    ? inputNama.value.trim()
+    : "Pentaksiran Umum";
+
+  if (!namaPentaksiran) {
+    paparAlert("Nama Diperlukan", "Sila masukkan nama pentaksiran.");
+    return;
+  }
+
   if (window.skemaJawapan.includes(null)) {
     paparAlert(
       "Skema Belum Lengkap",
@@ -2878,24 +3384,83 @@ function simpanSkema() {
     return;
   }
 
-  localStorage.setItem(
-    "cikguscan_skema_" + window.currentUser,
-    JSON.stringify(window.skemaJawapan),
-  );
-
-  let btn = document.getElementById("btn-simpan-skema")!;
+  let btn = document.getElementById("btn-simpan-skema") as HTMLButtonElement;
   let textAsal = btn.innerText;
-  btn.innerText = "Tersimpan! ✓";
-  btn.classList.replace("bg-apple-blue", "bg-green-500");
-  setTimeout(() => {
+  btn.innerText = "Menyimpan...";
+  btn.disabled = true;
+
+  try {
+    const data = {
+      nama: namaPentaksiran,
+      jumlahSoalan: window.JUMLAH_SOALAN,
+      skemaJawapan: window.skemaJawapan,
+      updatedAt: serverTimestamp(),
+    };
+
+    if (window.currentUserId) {
+      if (window.editingPentaksiranId) {
+        await updateDoc(
+          doc(
+            db,
+            "users",
+            window.currentUserId,
+            "pentaksirans",
+            window.editingPentaksiranId,
+          ),
+          data,
+        );
+      } else {
+        const docRef = doc(
+          collection(db, "users", window.currentUserId, "pentaksirans"),
+        );
+        data["createdAt"] = serverTimestamp();
+        await setDoc(docRef, data);
+        window.editingPentaksiranId = docRef.id;
+      }
+    } else {
+      // Local storage fallback for "local" user
+      let locals = JSON.parse(
+        localStorage.getItem("cikguscan_pentaksirans_local") || "[]",
+      );
+      if (window.editingPentaksiranId) {
+        let index = locals.findIndex(
+          (p: any) => p.id === window.editingPentaksiranId,
+        );
+        if (index > -1) locals[index] = { ...locals[index], ...data };
+      } else {
+        const newId = "local_" + Date.now();
+        locals.push({
+          id: newId,
+          ...data,
+          createdAt: new Date().toISOString(),
+        });
+        window.editingPentaksiranId = newId;
+      }
+      localStorage.setItem(
+        "cikguscan_pentaksirans_local",
+        JSON.stringify(locals),
+      );
+    }
+
+    // Refresh lists
+    await muatSenaraiPentaksiran();
+
+    btn.innerText = "Tersimpan! ✓";
+    btn.classList.replace("bg-apple-blue", "bg-green-500");
+    setTimeout(() => {
+      btn.innerText = textAsal;
+      btn.classList.replace("bg-green-500", "bg-apple-blue");
+      btn.disabled = false;
+      document.getElementById("btn-back-pentaksiran")?.click(); // Go back to list
+    }, 1500);
+  } catch (error) {
+    console.error("Error saving pentaksiran:", error);
+    paparAlert("Ralat", "Gagal menyimpan pentaksiran. Sila cuba lagi.");
     btn.innerText = textAsal;
-    btn.classList.replace("bg-green-500", "bg-apple-blue");
-  }, 2000);
-  document.getElementById("btn-print-skema")!.classList.remove("hidden");
+    btn.disabled = false;
+  }
 }
-document
-  .getElementById("btn-simpan-skema")!
-  .addEventListener("click", simpanSkema);
+document.getElementById("btn-simpan-skema")?.addEventListener("click", simpanSkema);
 
 function cetakSkema() {
   const revertBtn = startPrintLoading("btn-print-skema", "Memuatkan...");
@@ -2908,9 +3473,7 @@ function cetakSkema() {
 
   executePrint(revertBtn);
 }
-document
-  .getElementById("btn-print-skema")!
-  .addEventListener("click", cetakSkema);
+document.getElementById("btn-print-skema")?.addEventListener("click", cetakSkema);
 
 function cetakBorangOMR() {
   const revertBtn = startPrintLoading("btn-cetak-borang-omr", "Memuatkan...");
@@ -2921,9 +3484,7 @@ function cetakBorangOMR() {
 
   executePrint(revertBtn);
 }
-document
-  .getElementById("btn-cetak-borang-omr")!
-  .addEventListener("click", cetakBorangOMR);
+document.getElementById("btn-cetak-borang-omr")?.addEventListener("click", cetakBorangOMR);
 
 function janaBorangSkemaOMR() {
   const bekas = document.getElementById("cetakan-skema-omr-container");

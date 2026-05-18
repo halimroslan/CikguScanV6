@@ -310,7 +310,7 @@
                 id="nav-skema"
                 class="flex-1 py-2 px-3 sm:px-4 flex items-center justify-center gap-1.5 font-medium text-xs sm:text-sm rounded-full transition-all duration-300 bg-white text-apple-text shadow-sm"
               >
-                Skema
+                Pentaksiran
               </button>
               <button
                 id="nav-cetak"
@@ -351,73 +351,158 @@
         </div>
 
         <main class="w-full">
-          <!-- TAB: SKEMA JAWAPAN -->
+          <!-- TAB: PENTAKSIRAN -->
           <div id="tab-skema" class="tab-content">
-            <div class="text-center mb-8 no-print">
-              <h2 class="text-3xl sm:text-4xl font-bold tracking-tight mb-2">
-                Skema Jawapan.
-              </h2>
-              <p class="text-apple-textMuted font-medium">
-                Tetapkan jawapan tepat untuk analisis pantas.
-              </p>
+            <!-- PENTAKSIRAN LIST VIEW -->
+            <div id="pentaksiran-list-view">
+              <div class="text-center mb-8 no-print">
+                <h2 class="text-3xl sm:text-4xl font-bold tracking-tight mb-2">
+                  Pentaksiran.
+                </h2>
+                <p class="text-apple-textMuted font-medium">
+                  Urus pentaksiran dan skema pemarkahan anda.
+                </p>
+              </div>
+              <div class="mb-6 flex justify-center no-print">
+                <button
+                  id="btn-tambah-pentaksiran"
+                  class="bg-apple-blue text-white py-2 px-5 rounded-full font-medium shadow-sm hover:bg-apple-blueHover hover:scale-[1.01] active:scale-[0.99] transition-all flex items-center gap-2"
+                >
+                  <svg
+                    class="w-5 h-5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M12 4v16m8-8H4"
+                    ></path>
+                  </svg>
+                  Tambah Pentaksiran
+                </button>
+              </div>
+              <div
+                id="pentaksiran-list-container"
+                class="space-y-4 no-print flex flex-col min-h-[200px]"
+              >
+                <div class="text-center text-apple-textMuted mt-10">
+                  Memuatkan pentaksiran...
+                </div>
+              </div>
             </div>
 
-            <div
-              class="apple-card bg-white rounded-[24px] p-6 sm:p-8 shadow-apple mb-6 no-print"
-            >
-              <div
-                class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-apple-border/40 pb-6 mb-6"
-              >
-                <div>
-                  <label class="block text-base font-semibold text-apple-text"
-                    >Jumlah Soalan</label
+            <!-- PENTAKSIRAN FORM VIEW -->
+            <div id="pentaksiran-form-view" class="hidden">
+              <div class="mb-6 flex items-center justify-between no-print">
+                <button
+                  id="btn-back-pentaksiran"
+                  class="flex items-center gap-2 text-apple-blue hover:text-apple-blueHover font-medium transition-all"
+                >
+                  <svg
+                    class="w-5 h-5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
                   >
-                  <p class="text-xs text-apple-textMuted mt-1">
-                    Maksimum 40 soalan untuk satu kertas.
-                  </p>
-                </div>
-                <div class="flex items-center gap-2">
-                  <input
-                    type="number"
-                    id="input-jumlah-soalan"
-                    value="40"
-                    min="1"
-                    max="40"
-                    class="w-20 text-center p-2.5 text-lg font-semibold bg-apple-bg border border-apple-border rounded-xl focus:outline-none focus:ring-2 focus:ring-apple-blue/50 transition-all"
-                  />
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M15 19l-7-7 7-7"
+                    ></path>
+                  </svg>
+                  Kembali
+                </button>
+                <h2
+                  class="text-xl font-bold tracking-tight"
+                  id="pentaksiran-form-title"
+                >
+                  Tambah Pentaksiran
+                </h2>
+                <div class="w-20"></div>
+                <!-- spacer -->
+              </div>
+
+              <div
+                class="apple-card bg-white rounded-[24px] p-6 sm:p-8 shadow-apple mb-6 no-print"
+              >
+                <label
+                  class="block text-base font-semibold text-apple-text mb-2"
+                  >Nama Pentaksiran</label
+                >
+                <input
+                  type="text"
+                  id="input-nama-pentaksiran"
+                  placeholder="Contoh: Ujian Pertengahan Tahun Tingkatan 5"
+                  class="w-full p-4 mb-6 text-lg bg-apple-bg border border-apple-border rounded-xl focus:outline-none focus:ring-2 focus:ring-apple-blue/50 transition-all font-medium"
+                />
+
+                <button
+                  id="btn-show-tetapan-penskoran"
+                  class="w-full bg-apple-bg border border-apple-border text-apple-text font-bold py-3.5 rounded-xl shadow-sm hover:bg-gray-50 active:scale-[0.98] transition-all duration-300 flex items-center justify-center gap-2 mb-4"
+                >
+                  <svg
+                    class="w-5 h-5 text-apple-blue"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
+                    ></path>
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                    ></path>
+                  </svg>
+                  Tetapan Penskoran
+                </button>
+
+                <div id="tetapan-penskoran-container" class="hidden">
+                  <div
+                    class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-apple-border/40 pb-6 mb-6 pt-4 mt-2"
+                  >
+                    <div>
+                      <label
+                        class="block text-base font-semibold text-apple-text"
+                        >Jumlah Soalan</label
+                      >
+                      <p class="text-xs text-apple-textMuted mt-1">
+                        Maksimum 40 soalan untuk satu kertas.
+                      </p>
+                    </div>
+                    <div class="flex items-center gap-2">
+                      <input
+                        type="number"
+                        id="input-jumlah-soalan"
+                        value="40"
+                        min="1"
+                        max="40"
+                        class="w-20 text-center p-2.5 text-lg font-semibold bg-apple-bg border border-apple-border rounded-xl focus:outline-none focus:ring-2 focus:ring-apple-blue/50 transition-all"
+                      />
+                    </div>
+                  </div>
+
+                  <div id="borang-skema" class="space-y-2"></div>
                 </div>
               </div>
 
-              <div id="borang-skema" class="space-y-2"></div>
-            </div>
-
-            <div class="mt-6 flex flex-col gap-3 no-print">
-              <button
-                id="btn-simpan-skema"
-                class="w-full bg-apple-blue text-white font-medium text-lg py-3.5 rounded-full shadow-apple-sm hover:bg-apple-blueHover hover:scale-[1.01] active:scale-[0.99] transition-all duration-300"
-              >
-                Simpan Skema
-              </button>
-              <button
-                id="btn-print-skema"
-                class="hidden w-full bg-white text-apple-text border border-apple-border font-medium text-lg py-3.5 rounded-full hover:bg-gray-50 hover:scale-[1.01] active:scale-[0.99] transition-all duration-300 flex items-center justify-center gap-2"
-              >
-                <svg
-                  class="w-5 h-5"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                  xmlns="http://www.w3.org/2000/svg"
+              <div class="mt-6 flex flex-col gap-3 no-print">
+                <button
+                  id="btn-simpan-skema"
+                  class="w-full bg-apple-blue text-white font-medium text-lg py-3.5 rounded-full shadow-apple-sm hover:bg-apple-blueHover hover:scale-[1.01] active:scale-[0.99] transition-all duration-300"
                 >
-                  <path
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    stroke-width="2"
-                    d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"
-                  ></path>
-                </svg>
-                Cetak Skema Rujukan
-              </button>
+                  Simpan Pentaksiran
+                </button>
+              </div>
             </div>
 
             <div
@@ -501,10 +586,37 @@
               Mod Ganti Rekod Aktif. Sila imbas semula OMR pelajar.
             </div>
 
-            <div class="mb-4 flex justify-center">
+            <div
+              class="mb-4 flex flex-col items-center justify-center gap-3 w-full max-w-sm mx-auto"
+            >
+              <div class="relative w-full">
+                <select
+                  id="select-pentaksiran"
+                  class="w-full bg-white border border-apple-border text-apple-text font-bold py-3.5 pl-4 pr-10 rounded-2xl shadow-sm hover:bg-gray-50 focus:ring-2 focus:ring-apple-blue outline-none transition-all duration-300 appearance-none text-center text-sm sm:text-base"
+                >
+                  <option value="">Pilih Pentaksiran...</option>
+                </select>
+                <div
+                  class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-gray-500"
+                >
+                  <svg
+                    class="w-4 h-4"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M19 9l-7 7-7-7"
+                    ></path>
+                  </svg>
+                </div>
+              </div>
               <button
                 id="btn-pilih-kelas"
-                class="w-full bg-white border border-apple-border text-apple-text font-bold py-3.5 rounded-2xl shadow-sm hover:bg-gray-50 active:scale-[0.98] transition-all duration-300 truncate px-4"
+                class="w-full bg-white border border-apple-border text-apple-text font-bold py-3.5 rounded-2xl shadow-sm hover:bg-gray-50 active:scale-[0.98] transition-all duration-300 truncate px-4 text-sm sm:text-base"
               >
                 Kelas: Kelas Umum
               </button>
@@ -581,82 +693,132 @@
 
           <!-- TAB: ANALISIS -->
           <div id="tab-analisis" class="tab-content hidden flex-col">
-            <div class="text-center mb-8 no-print">
-              <h2 class="text-3xl sm:text-4xl font-bold tracking-tight mb-2">
-                Analisis Keseluruhan.
-              </h2>
-              <p class="text-apple-textMuted font-medium">
-                Pilih analisis mengikut individu/ kelas / item.
-              </p>
-            </div>
-
-            <div class="flex items-center justify-between mb-4 px-2">
-              <select
-                id="filter-kelas-dropdown"
-                class="text-sm bg-white border border-gray-300 rounded-md px-2 py-1 outline-none focus:ring-1 focus:ring-apple-blue font-medium text-apple-text shadow-sm"
+            <!-- ANALISIS LIST VIEW -->
+            <div id="analisis-list-view">
+              <div class="text-center mb-8 no-print">
+                <h2 class="text-3xl sm:text-4xl font-bold tracking-tight mb-2">
+                  Analisis Pentaksiran.
+                </h2>
+                <p class="text-apple-textMuted font-medium">
+                  Pilih pentaksiran untuk melihat laporan analisis.
+                </p>
+              </div>
+              <div
+                id="analisis-pentaksiran-list"
+                class="space-y-4 no-print flex flex-col min-h-[200px]"
               >
-                <option value="Semua">Semua Kelas</option>
-              </select>
-              <button
-                id="btn-padam-semua"
-                class="text-red-500 text-sm font-semibold hover:underline active:scale-95 transition-all"
-              >
-                Padam Semua
-              </button>
-            </div>
-
-            <div
-              class="flex w-full bg-[#e3e3e8] p-1 rounded-full shadow-inner mb-4 overflow-x-auto hide-scroll"
-            >
-              <div class="flex min-w-[280px] sm:min-w-full w-full">
-                <button
-                  id="subnav-individu"
-                  class="flex-1 py-1.5 px-2 flex items-center justify-center font-medium text-xs sm:text-sm rounded-full transition-all duration-300 bg-white text-apple-text shadow-sm"
-                >
-                  Individu (<span id="jumlah-rekod">0</span>)
-                </button>
-                <button
-                  id="subnav-kelas"
-                  class="flex-1 py-1.5 px-2 flex items-center justify-center font-medium text-xs sm:text-sm rounded-full transition-all duration-300 text-apple-textMuted hover:text-apple-text"
-                >
-                  Kelas
-                </button>
-                <button
-                  id="subnav-item"
-                  class="flex-1 py-1.5 px-2 flex items-center justify-center font-medium text-xs sm:text-sm rounded-full transition-all duration-300 text-apple-textMuted hover:text-apple-text"
-                >
-                  Item
-                </button>
+                <div class="text-center text-apple-textMuted mt-10">
+                  Tiada pentaksiran.
+                </div>
               </div>
             </div>
 
-            <div
-              class="apple-card bg-[#f1f1f2] border border-[#e5e5ea] rounded-[24px] overflow-hidden shadow-inner flex flex-col p-2 gap-2 min-h-[300px]"
-              id="senarai-analisis"
-            ></div>
-
-            <div class="mt-6 w-full no-print">
-              <button
-                id="btn-eksport-pdf"
-                class="w-full bg-white border border-apple-border text-apple-blue font-bold py-4 rounded-full shadow-apple-sm hover:bg-gray-50 hover:scale-[1.01] active:scale-[0.99] transition-all duration-300 flex items-center justify-center gap-2"
-              >
-                <svg
-                  class="w-5 h-5"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
+            <!-- ANALISIS DETAILS VIEW -->
+            <div id="analisis-details-view" class="hidden flex-col w-full">
+              <div class="mb-4 flex items-center justify-between no-print px-2">
+                <button
+                  id="btn-back-analisis"
+                  class="flex items-center gap-2 text-apple-blue hover:text-apple-blueHover font-medium transition-all"
                 >
-                  <path
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    stroke-width="2"
-                    d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                  ></path>
-                </svg>
-                Eksport Analisis (PDF)
-              </button>
+                  <svg
+                    class="w-5 h-5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M15 19l-7-7 7-7"
+                    ></path>
+                  </svg>
+                  Kembali
+                </button>
+                <h2
+                  class="text-lg sm:text-xl font-bold tracking-tight truncate max-w-[200px] sm:max-w-xs text-center"
+                  id="analisis-details-title"
+                >
+                  Analisis Keseluruhan
+                </h2>
+                <div class="w-20"></div>
+                <!-- spacer -->
+              </div>
+
+              <div class="text-center mb-8 no-print hidden">
+                <!-- Original title hidden -->
+              </div>
+
+              <div class="flex items-center justify-between mb-4 px-2">
+                <select
+                  id="filter-kelas-dropdown"
+                  class="text-sm bg-white border border-gray-300 rounded-md px-2 py-1 outline-none focus:ring-1 focus:ring-apple-blue font-medium text-apple-text shadow-sm"
+                >
+                  <option value="Semua">Semua Kelas</option>
+                </select>
+                <button
+                  id="btn-padam-semua"
+                  class="text-red-500 text-sm font-semibold hover:underline active:scale-95 transition-all"
+                >
+                  Padam Semua
+                </button>
+              </div>
+
+              <div
+                class="flex w-full bg-[#e3e3e8] p-1 rounded-full shadow-inner mb-4 overflow-x-auto hide-scroll"
+              >
+                <div class="flex min-w-[280px] sm:min-w-full w-full">
+                  <button
+                    id="subnav-individu"
+                    class="flex-1 py-1.5 px-2 flex items-center justify-center font-medium text-xs sm:text-sm rounded-full transition-all duration-300 bg-white text-apple-text shadow-sm"
+                  >
+                    Individu (<span id="jumlah-rekod">0</span>)
+                  </button>
+                  <button
+                    id="subnav-kelas"
+                    class="flex-1 py-1.5 px-2 flex items-center justify-center font-medium text-xs sm:text-sm rounded-full transition-all duration-300 text-apple-textMuted hover:text-apple-text"
+                  >
+                    Kelas
+                  </button>
+                  <button
+                    id="subnav-item"
+                    class="flex-1 py-1.5 px-2 flex items-center justify-center font-medium text-xs sm:text-sm rounded-full transition-all duration-300 text-apple-textMuted hover:text-apple-text"
+                  >
+                    Item
+                  </button>
+                </div>
+              </div>
+
+              <div
+                class="apple-card bg-[#f1f1f2] border border-[#e5e5ea] rounded-[24px] overflow-hidden shadow-inner flex flex-col p-2 gap-2 min-h-[300px]"
+                id="senarai-analisis"
+              ></div>
+
+              <div class="mt-6 w-full no-print">
+                <button
+                  id="btn-eksport-pdf"
+                  class="w-full bg-white border border-apple-border text-apple-blue font-bold py-4 rounded-full shadow-apple-sm hover:bg-gray-50 hover:scale-[1.01] active:scale-[0.99] transition-all duration-300 flex items-center justify-center gap-2"
+                >
+                  <svg
+                    class="w-5 h-5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                    ></path>
+                  </svg>
+                  Eksport Analisis (PDF)
+                </button>
+              </div>
             </div>
+            <!-- Close analisis-details-view -->
           </div>
+          <!-- Close tab-analisis -->
 
           <div
             id="cetakan-analisis-container"
@@ -944,19 +1106,36 @@
       >
         <div class="px-6 py-5 border-b border-gray-100 bg-white">
           <h3 class="text-lg font-bold text-apple-text text-center">
-            Tetapan Kelas
+            Tetapan Imbasan
           </h3>
           <p class="text-xs text-apple-textMuted text-center mt-1">
-            Imbasan seterusnya akan disimpan ke kelas ini.
+            Sila pilih pentaksiran dan senarai kelas.
           </p>
         </div>
-        <div class="p-6 bg-apple-bg">
-          <input
-            type="text"
-            id="input-nama-kelas"
-            placeholder="Contoh: 5 Amanah"
-            class="w-full p-3.5 rounded-xl border border-gray-300 focus:ring-2 focus:ring-apple-blue outline-none text-center font-medium text-apple-text"
-          />
+        <div class="p-6 bg-apple-bg flex flex-col gap-4">
+          <div>
+            <label class="block text-sm font-bold text-apple-text mb-2 text-center text-gray-600">Pilihan Pentaksiran</label>
+            <div class="relative w-full">
+              <select
+                id="modal-select-pentaksiran"
+                class="w-full bg-white border border-gray-300 text-apple-text font-bold py-3.5 pl-4 pr-10 rounded-xl focus:ring-2 focus:ring-apple-blue outline-none transition-all duration-300 appearance-none text-center text-sm"
+              >
+                <option value="">Pilih Pentaksiran...</option>
+              </select>
+              <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-gray-500">
+                <svg class="w-5 h-5 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+              </div>
+            </div>
+          </div>
+          <div>
+            <label class="block text-sm font-bold text-apple-text mb-2 text-center text-gray-600">Nama Kelas</label>
+            <input
+              type="text"
+              id="input-nama-kelas"
+              placeholder="Contoh: 5 Amanah"
+              class="w-full p-3.5 rounded-xl border border-gray-300 focus:ring-2 focus:ring-apple-blue outline-none text-center font-medium text-apple-text"
+            />
+          </div>
         </div>
         <div
           class="p-4 grid grid-cols-2 gap-3 bg-white border-t border-gray-100"
@@ -1172,7 +1351,6 @@
         <div class="flex justify-between items-center mb-6">
           <div>
             <h2 class="text-2xl font-bold text-apple-text">Panel Admin</h2>
-            <p class="text-sm text-apple-textMuted">Urus akses pengguna</p>
           </div>
           <button
             id="btn-tutup-admin"
@@ -1192,6 +1370,14 @@
               ></path>
             </svg>
           </button>
+        </div>
+        <div class="mb-4">
+          <input
+            type="text"
+            id="admin-search-input"
+            placeholder="Cari emel pengguna..."
+            class="w-full px-4 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-apple-blue/50 text-sm"
+          />
         </div>
         <div
           class="flex-1 overflow-y-auto min-h-0 space-y-4 pr-1"
