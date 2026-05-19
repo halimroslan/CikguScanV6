@@ -148,7 +148,12 @@ function updateStatusHeader() {
   if (!statusEl) return;
   
   if (window.isPro) {
-    statusEl.innerText = "Akaun PRO";
+    if (window.proExpireAt) {
+      let daysLeft = Math.ceil((window.proExpireAt - Date.now()) / (1000 * 60 * 60 * 24));
+      statusEl.innerText = `AKAUN PRO (${daysLeft} HARI)`;
+    } else {
+      statusEl.innerText = "AKAUN PRO";
+    }
     statusEl.className = "text-[9px] sm:text-[10px] font-bold uppercase tracking-wider whitespace-nowrap text-blue-600";
     return;
   }
@@ -840,8 +845,9 @@ function bukaModalKelas() {
     }
   }
 
-  let input = document.getElementById("input-nama-kelas") as HTMLInputElement;
-  input.value = window.kelasSemasa === "Kelas Umum" ? "" : window.kelasSemasa;
+  let input = document.getElementById("input-nama-kelas") as HTMLSelectElement;
+  muatSenaraiKelasLokal();
+  input.value = window.kelasSemasa || "Kelas Umum";
   document.getElementById("modal-kelas")!.classList.remove("hidden");
   document.getElementById("modal-kelas")!.classList.add("flex");
   setTimeout(() => input.focus(), 100);
@@ -887,7 +893,7 @@ function simpanKelas() {
   }
 
   let val = (
-    document.getElementById("input-nama-kelas") as HTMLInputElement
+    document.getElementById("input-nama-kelas") as HTMLSelectElement
   ).value.trim();
   if (val !== "") {
     window.kelasSemasa = val;
@@ -925,7 +931,7 @@ document
   .getElementById("btn-simpan-kelas")!
   .addEventListener("click", simpanKelas);
 
-(window as any).bukaModalRekod = function (id: string) {
+(window as any).bukaModalRekod = function (id: string, isRefresh: boolean = false) {
   (window as any).modalRekodSemasaId = id;
   let rekod = window.senaraiRekodKelas.find((r: any) => r.id === id);
   if (!rekod) return;
@@ -1023,7 +1029,9 @@ document
   modal.classList.remove("hidden");
   modal.classList.add("flex");
 
-  document.getElementById("modal-kandungan")!.scrollTop = 0;
+  if (!isRefresh) {
+    document.getElementById("modal-kandungan")!.scrollTop = 0;
+  }
 };
 
 function tutupModalRekod() {
@@ -2096,117 +2104,6 @@ function analisisImej(sumberCanvas: HTMLCanvasElement) {
   const ctxDebug = canvasDebug.getContext("2d")!;
   ctxDebug.drawImage(sumberCanvas, 0, 0);
 
-  // KIRA KECERAHAN KERTAS UNTUK MENCARI MARKER
-  let size = Math.max(10, geo.boxW * 0.025);
-  let whitePoints = [
-    { x: geo.boxX + geo.boxW * 0.15, y: geo.boxY + geo.boxH * 0.05 },
-    { x: geo.boxX + geo.boxW * 0.85, y: geo.boxY + geo.boxH * 0.05 },
-  ];
-  let highestAvg = 0;
-  for (let wp of whitePoints) {
-    let sx = Math.max(0, Math.min(ctx.canvas.width - size, wp.x - size / 2)),
-      sy = Math.max(0, Math.min(ctx.canvas.height - size, wp.y - size / 2));
-    let cData = ctx.getImageData(sx, sy, size, size),
-      sum = 0;
-    for (let k = 0; k < cData.data.length; k += 4)
-      sum +=
-        0.299 * cData.data[k] +
-        0.587 * cData.data[k + 1] +
-        0.114 * cData.data[k + 2];
-    let avg = sum / (cData.data.length / 4);
-    if (avg > highestAvg) highestAvg = avg;
-  }
-  let paperBrightness = highestAvg || 200;
-  let darkThreshold = paperBrightness * CONFIG_IMBASAN.ambangMarkerHitam;
-
-  // FUNGSI MENCARI PUSAT MARKER DENGAN PENCARIAN TEMPATAN
-  function findMarkerCenter(targetX: number, targetY: number, customRadius?: number) {
-    let srcRadius = Math.max(25, customRadius || geo.boxW * 0.1);
-    let sx = Math.max(0, Math.round(targetX - srcRadius));
-    let sy = Math.max(0, Math.round(targetY - srcRadius));
-    let sw = Math.min(ctx.canvas.width - sx, Math.round(srcRadius * 2));
-    let sh = Math.min(ctx.canvas.height - sy, Math.round(srcRadius * 2));
-
-    if (sw <= 0 || sh <= 0) return { x: targetX, y: targetY, found: false };
-
-    let imgData = ctx.getImageData(sx, sy, sw, sh);
-    let pixels = imgData.data;
-    let sumX = 0, sumY = 0, darkCount = 0;
-
-    for (let y = 0; y < sh; y++) {
-      for (let x = 0; x < sw; x++) {
-        let idx = (y * sw + x) * 4;
-        let brightness = 0.299 * pixels[idx] + 0.587 * pixels[idx+1] + 0.114 * pixels[idx+2];
-        if (brightness < darkThreshold) {
-          sumX += x;
-          sumY += y;
-          darkCount++;
-        }
-      }
-    }
-
-    if (darkCount > 5) {
-      let cx = sumX / darkCount;
-      let cy = sumY / darkCount;
-      return { x: sx + cx, y: sy + cy, found: true };
-    }
-    return { x: targetX, y: targetY, found: false };
-  }
-
-  let tl = findMarkerCenter(geo.boxX, geo.boxY, geo.boxW * 0.12);
-  let tr = findMarkerCenter(geo.boxX + geo.boxW, geo.boxY, geo.boxW * 0.12);
-  let bl = findMarkerCenter(geo.boxX, geo.boxY + geo.boxH, geo.boxW * 0.12);
-  let br = findMarkerCenter(geo.boxX + geo.boxW, geo.boxY + geo.boxH, geo.boxW * 0.12);
-
-  let expectedMlX = (tl.x + bl.x) / 2;
-  let expectedMlY = (tl.y + bl.y) / 2;
-  let expectedMrX = (tr.x + br.x) / 2;
-  let expectedMrY = (tr.y + br.y) / 2;
-
-  let ml = findMarkerCenter(expectedMlX, expectedMlY, geo.boxW * 0.08);
-  let mr = findMarkerCenter(expectedMrX, expectedMrY, geo.boxW * 0.08);
-
-  function mapPoint(x: number, y: number) {
-    let u = (x - geo.boxX) / geo.boxW;
-    let rawV = (y - geo.boxY) / geo.boxH;
-    
-    // Split quad interpolation to handle camera perspective better
-    if (rawV < 0.5) {
-      let v = rawV * 2.0; // scale 0-0.5 to 0-1 for top quad
-      let mapX = (1 - u) * (1 - v) * tl.x + u * (1 - v) * tr.x + (1 - u) * v * ml.x + u * v * mr.x;
-      let mapY = (1 - u) * (1 - v) * tl.y + u * (1 - v) * tr.y + (1 - u) * v * ml.y + u * v * mr.y;
-      return { x: mapX, y: mapY };
-    } else {
-      let v = (rawV - 0.5) * 2.0; // scale 0.5-1 to 0-1 for bottom quad
-      let mapX = (1 - u) * (1 - v) * ml.x + u * (1 - v) * mr.x + (1 - u) * v * bl.x + u * v * br.x;
-      let mapY = (1 - u) * (1 - v) * ml.y + u * (1 - v) * mr.y + (1 - u) * v * bl.y + u * v * br.y;
-      return { x: mapX, y: mapY };
-    }
-  }
-
-  // Tanda marker dikesan untuk tujuan debug
-  ctxDebug.fillStyle = "rgba(255, 0, 0, 0.7)";
-  [tl, tr, ml, mr, bl, br].forEach(pt => {
-    ctxDebug.beginPath();
-    ctxDebug.arc(pt.x, pt.y, 6, 0, Math.PI * 2);
-    ctxDebug.fill();
-  });
-
-  // Tanda titik panduan asal (biru)
-  ctxDebug.fillStyle = "rgba(0, 113, 227, 0.7)";
-  [
-    {x: geo.boxX, y: geo.boxY},
-    {x: geo.boxX + geo.boxW, y: geo.boxY},
-    {x: geo.boxX, y: geo.boxY + geo.boxH * 0.5},
-    {x: geo.boxX + geo.boxW, y: geo.boxY + geo.boxH * 0.5},
-    {x: geo.boxX, y: geo.boxY + geo.boxH},
-    {x: geo.boxX + geo.boxW, y: geo.boxY + geo.boxH}
-  ].forEach(pt => {
-    ctxDebug.beginPath();
-    ctxDebug.arc(pt.x, pt.y, 4, 0, Math.PI * 2);
-    ctxDebug.fill();
-  });
-
   ctxDebug.strokeStyle = "rgba(0, 113, 227, 0.4)";
   ctxDebug.lineWidth = 3;
   ctxDebug.strokeRect(geo.boxX, geo.boxY, geo.boxW, geo.boxH);
@@ -2235,16 +2132,11 @@ function analisisImej(sumberCanvas: HTMLCanvasElement) {
   for (let i = 0; i < window.JUMLAH_SOALAN; i++) {
     let { cy, posX } = geo.getPilihanGeometri(i);
     let tahapKegelapan: number[] = [];
-    let mappedPositions: {x: number, y: number}[] = [];
-
     for (let j = 0; j < window.PILIHAN.length; j++) {
       let cx = posX[j];
-      let mapped = mapPoint(cx, cy);
-      mappedPositions.push(mapped);
-
       let imgData = ctx.getImageData(
-        Math.max(0, mapped.x - scanR),
-        Math.max(0, mapped.y - scanR),
+        cx - scanR,
+        cy - scanR,
         scanR * 2,
         scanR * 2,
       );
@@ -2287,20 +2179,16 @@ function analisisImej(sumberCanvas: HTMLCanvasElement) {
     }
 
     for (let j = 0; j < window.PILIHAN.length; j++) {
-      let mapped = mappedPositions[j];
+      let cx = posX[j];
       ctxDebug.beginPath();
-      ctxDebug.arc(mapped.x, mapped.y, r, 0, 2 * Math.PI);
+      ctxDebug.arc(cx, cy, r, 0, 2 * Math.PI);
       if (window.PILIHAN[j] === pilihanPelajar) {
-        if (pilihanPelajar === "BATAL") {
-           ctxDebug.fillStyle = "rgba(251, 146, 60, 0.6)";
-           ctxDebug.fill();
-        } else if (betul) {
+        if (betul) {
           ctxDebug.fillStyle = "rgba(34, 197, 94, 0.6)";
-          ctxDebug.fill();
         } else {
           ctxDebug.fillStyle = "rgba(239, 68, 68, 0.6)";
-          ctxDebug.fill();
         }
+        ctxDebug.fill();
       } else if (
         pilihanPelajar === "BATAL" &&
         avgPaper - tahapKegelapan[j] > CONFIG_IMBASAN.ambangKosong
@@ -2474,8 +2362,15 @@ function analisisImej(sumberCanvas: HTMLCanvasElement) {
     finaliseRekod(markah, butiran, true, "pending");
     window.idUntukGanti = null;
 
+    let aiIndicator = document.getElementById("ai-verifying-indicator");
+    if (aiIndicator) {
+      aiIndicator.classList.remove("hidden");
+    }
+
     verifikasiAI(imejPenuhDataUrlUnmarked, imejNamaDataUrl, butiran)
       .then((res) => {
+        if (aiIndicator) aiIndicator.classList.add("hidden");
+
         if (res) {
           window.idUntukGanti = pendingId;
           finaliseRekod(
@@ -2500,7 +2395,7 @@ function analisisImej(sumberCanvas: HTMLCanvasElement) {
             !modal.classList.contains("hidden") &&
             (window as any).modalRekodSemasaId === pendingId
           ) {
-            (window as any).bukaModalRekod(pendingId);
+            (window as any).bukaModalRekod(pendingId, true);
           }
         } else {
           console.warn("AI Gagal: CikguScan mengekalkan kiraan tempatan.");
@@ -2514,11 +2409,12 @@ function analisisImej(sumberCanvas: HTMLCanvasElement) {
             !modal.classList.contains("hidden") &&
             (window as any).modalRekodSemasaId === pendingId
           ) {
-            (window as any).bukaModalRekod(pendingId);
+            (window as any).bukaModalRekod(pendingId, true);
           }
         }
       })
       .catch((err) => {
+        if (aiIndicator) aiIndicator.classList.add("hidden");
         console.error("AI Ralat", err);
         window.idUntukGanti = pendingId;
         finaliseRekod(markah, butiran, false, "failed");
@@ -2530,7 +2426,7 @@ function analisisImej(sumberCanvas: HTMLCanvasElement) {
           !modal.classList.contains("hidden") &&
           (window as any).modalRekodSemasaId === pendingId
         ) {
-          (window as any).bukaModalRekod(pendingId);
+          (window as any).bukaModalRekod(pendingId, true);
         }
       });
   } else {
@@ -2634,7 +2530,9 @@ function paparKeputusan(
     .join("");
   document.getElementById("senarai-keputusan")!.innerHTML = senaraiHtml;
 
-  window.scrollTo({ top: 0, behavior: "smooth" });
+  if (isTukarTab) {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
 }
 
 function kemaskiniJumlahSoalan() {
@@ -3277,6 +3175,7 @@ async function muatSenaraiPentaksiran() {
   }
 
   renderPentaksiranList();
+  renderKelasList();
   renderAnalisisPentaksiranList();
   updateSelectPentaksiranDropdown();
 }
@@ -3298,13 +3197,18 @@ function renderPentaksiranList() {
         <h3 class="font-bold text-apple-text text-lg">${p.nama}</h3>
         <p class="text-sm text-apple-textMuted">${p.jumlahSoalan} Soalan</p>
       </div>
-      <div class="flex items-center space-x-2">
-        <div class="p-2 text-apple-textMuted hover:text-red-500 transition-colors btn-delete-pentaksiran" data-id="${p.id}" title="Padam">
-          <svg fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
-          </svg>
+      <div class="flex items-center space-x-2" onclick="event.stopPropagation()">
+        <div class="flex items-center gap-1">
+          <button class="w-8 h-8 rounded-full bg-red-50 text-red-500 hover:bg-red-100 flex justify-center items-center transition-colors btn-trigger-delete-pentaksiran" title="Padam" data-id="${p.id}">
+            <svg fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
+            </svg>
+          </button>
+          <button class="hidden px-3 py-1 bg-red-500 text-white text-xs font-semibold rounded-full hover:bg-red-600 btn-confirm-delete-pentaksiran" data-id="${p.id}">Sah Padam</button>
+          <button class="hidden w-8 h-8 rounded-full bg-gray-100 text-gray-500 hover:bg-gray-200 justify-center items-center btn-cancel-delete-pentaksiran" title="Batal">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+          </button>
         </div>
-        <svg class="w-5 h-5 text-apple-textMuted" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
       </div>
     </div>
   `,
@@ -3313,23 +3217,123 @@ function renderPentaksiranList() {
 
   document.querySelectorAll(".pentaksiran-item").forEach((item) => {
     item.addEventListener("click", (e) => {
-      if ((e.target as HTMLElement).closest('.btn-delete-pentaksiran')) return;
       const id = item.getAttribute("data-id");
       openPentaksiranForm(id);
     });
   });
 
-  document.querySelectorAll(".btn-delete-pentaksiran").forEach((btn) => {
+  document.querySelectorAll(".btn-trigger-delete-pentaksiran").forEach((btn) => {
     btn.addEventListener("click", (e) => {
-      e.stopPropagation();
+      const parent = (e.target as HTMLElement).closest('.flex.items-center.gap-1')!;
+      parent.querySelector('.btn-trigger-delete-pentaksiran')!.classList.add('hidden');
+      parent.querySelector('.btn-trigger-delete-pentaksiran')!.classList.remove('flex');
+      parent.querySelector('.btn-confirm-delete-pentaksiran')!.classList.remove('hidden');
+      parent.querySelector('.btn-confirm-delete-pentaksiran')!.classList.add('block');
+      parent.querySelector('.btn-cancel-delete-pentaksiran')!.classList.remove('hidden');
+      parent.querySelector('.btn-cancel-delete-pentaksiran')!.classList.add('flex');
+    });
+  });
+
+  document.querySelectorAll(".btn-cancel-delete-pentaksiran").forEach((btn) => {
+    btn.addEventListener("click", (e) => {
+      const parent = (e.target as HTMLElement).closest('.flex.items-center.gap-1')!;
+      parent.querySelector('.btn-trigger-delete-pentaksiran')!.classList.remove('hidden');
+      parent.querySelector('.btn-trigger-delete-pentaksiran')!.classList.add('flex');
+      parent.querySelector('.btn-confirm-delete-pentaksiran')!.classList.add('hidden');
+      parent.querySelector('.btn-confirm-delete-pentaksiran')!.classList.remove('block');
+      parent.querySelector('.btn-cancel-delete-pentaksiran')!.classList.add('hidden');
+      parent.querySelector('.btn-cancel-delete-pentaksiran')!.classList.remove('flex');
+    });
+  });
+
+  document.querySelectorAll(".btn-confirm-delete-pentaksiran").forEach((btn) => {
+    btn.addEventListener("click", (e) => {
       const id = btn.getAttribute("data-id");
-      if (id) hapusPentaksiran(id);
+      if (id) {
+          hapusPentaksiran(id, true);
+      }
     });
   });
 }
 
-function hapusPentaksiran(id: string) {
-  paparConfirm("Padam Pentaksiran", "Adakah Cikgu pasti mahu memadam pentaksiran ini? Semua rekod yang berkaitan juga mungkin terjejas.", async () => {
+function renderKelasList() {
+  const container = document.getElementById("kelas-list-container");
+  if (!container) return;
+
+  let listStr = localStorage.getItem("cikguscan_senarai_kelas_" + window.currentUser) || "[]";
+  let senaraiKelas = JSON.parse(listStr);
+
+  if (senaraiKelas.length === 0) {
+    container.innerHTML = `<div class="text-center text-apple-textMuted mt-10 mb-10">Belum ada kelas ditambah. Klik Tambah Kelas untuk bermula.</div>`;
+    return;
+  }
+
+  container.innerHTML = senaraiKelas
+    .map(
+      (k: string, index: number) => `
+    <div class="bg-white rounded-2xl p-4 sm:p-5 flex items-center justify-between shadow-sm border border-apple-border/50 transition-all kelas-item">
+      <div class="flex-1">
+        <h3 class="font-bold text-apple-text text-lg">${k}</h3>
+      </div>
+      <div class="flex items-center space-x-2" onclick="event.stopPropagation()">
+        <div class="flex items-center gap-1">
+          <button class="w-8 h-8 rounded-full bg-red-50 text-red-500 hover:bg-red-100 flex justify-center items-center transition-colors btn-trigger-delete-kelas" title="Padam" data-index="${index}">
+            <svg fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
+            </svg>
+          </button>
+          <button class="hidden px-3 py-1 bg-red-500 text-white text-xs font-semibold rounded-full hover:bg-red-600 btn-confirm-delete-kelas" data-index="${index}">Sah Padam</button>
+          <button class="hidden w-8 h-8 rounded-full bg-gray-100 text-gray-500 hover:bg-gray-200 justify-center items-center btn-cancel-delete-kelas" title="Batal">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+          </button>
+        </div>
+      </div>
+    </div>
+  `,
+    )
+    .join("");
+
+  document.querySelectorAll(".btn-trigger-delete-kelas").forEach((btn) => {
+    btn.addEventListener("click", (e) => {
+      const parent = (e.target as HTMLElement).closest('.flex.items-center.gap-1')!;
+      parent.querySelector('.btn-trigger-delete-kelas')!.classList.add('hidden');
+      parent.querySelector('.btn-trigger-delete-kelas')!.classList.remove('flex');
+      parent.querySelector('.btn-confirm-delete-kelas')!.classList.remove('hidden');
+      parent.querySelector('.btn-confirm-delete-kelas')!.classList.add('block');
+      parent.querySelector('.btn-cancel-delete-kelas')!.classList.remove('hidden');
+      parent.querySelector('.btn-cancel-delete-kelas')!.classList.add('flex');
+    });
+  });
+
+  document.querySelectorAll(".btn-cancel-delete-kelas").forEach((btn) => {
+    btn.addEventListener("click", (e) => {
+      const parent = (e.target as HTMLElement).closest('.flex.items-center.gap-1')!;
+      parent.querySelector('.btn-trigger-delete-kelas')!.classList.remove('hidden');
+      parent.querySelector('.btn-trigger-delete-kelas')!.classList.add('flex');
+      parent.querySelector('.btn-confirm-delete-kelas')!.classList.add('hidden');
+      parent.querySelector('.btn-confirm-delete-kelas')!.classList.remove('block');
+      parent.querySelector('.btn-cancel-delete-kelas')!.classList.add('hidden');
+      parent.querySelector('.btn-cancel-delete-kelas')!.classList.remove('flex');
+    });
+  });
+
+  document.querySelectorAll(".btn-confirm-delete-kelas").forEach((btn) => {
+    btn.addEventListener("click", (e) => {
+      const index = parseInt(btn.getAttribute("data-index") || "-1");
+      if (index > -1) {
+          let listStr = localStorage.getItem("cikguscan_senarai_kelas_" + window.currentUser) || "[]";
+          let senaraiKelas = JSON.parse(listStr);
+          senaraiKelas.splice(index, 1);
+          localStorage.setItem("cikguscan_senarai_kelas_" + window.currentUser, JSON.stringify(senaraiKelas));
+          renderKelasList();
+          muatSenaraiKelasLokal();
+      }
+    });
+  });
+}
+
+function hapusPentaksiran(id: string, bypassConfirm: boolean = false) {
+  const proceedDelete = async () => {
     if (window.currentUserId) {
       try {
         await deleteDoc(doc(db, "users", window.currentUserId, "pentaksirans", id));
@@ -3356,7 +3360,13 @@ function hapusPentaksiran(id: string) {
     renderPentaksiranList();
     renderAnalisisPentaksiranList();
     updateSelectPentaksiranDropdown();
-  });
+  };
+
+  if (bypassConfirm) {
+    proceedDelete();
+  } else {
+    paparConfirm("Padam Pentaksiran", "Adakah Cikgu pasti mahu memadam pentaksiran ini? Semua rekod yang berkaitan juga mungkin terjejas.", proceedDelete);
+  }
 }
 
 function renderAnalisisPentaksiranList() {
@@ -3507,6 +3517,60 @@ function openAnalisisDetails(id: string | null) {
 document
   .getElementById("btn-tambah-pentaksiran")
   ?.addEventListener("click", () => openPentaksiranForm(null));
+
+function muatSenaraiKelasLokal() {
+  let listStr = localStorage.getItem("cikguscan_senarai_kelas_" + window.currentUser) || "[]";
+  let senaraiKelas = JSON.parse(listStr);
+  let selectEl = document.getElementById("input-nama-kelas") as HTMLSelectElement;
+  if (!selectEl) return;
+  selectEl.innerHTML = '<option value="Kelas Umum">Kelas Umum</option>';
+  senaraiKelas.forEach((k: string) => {
+    let opt = document.createElement("option");
+    opt.value = k;
+    opt.innerText = k;
+    selectEl.appendChild(opt);
+  });
+}
+
+document
+  .getElementById("btn-tambah-kelas")
+  ?.addEventListener("click", () => {
+    let inputEl = document.getElementById("input-tambah-kelas-nama") as HTMLInputElement;
+    if (inputEl) inputEl.value = "";
+    document.getElementById("modal-tambah-kelas")!.classList.remove("hidden");
+    document.getElementById("modal-tambah-kelas")!.classList.add("flex");
+    setTimeout(() => { if (inputEl) inputEl.focus(); }, 100);
+  });
+
+document.getElementById("btn-batal-tambah-kelas")?.addEventListener("click", () => {
+    document.getElementById("modal-tambah-kelas")!.classList.remove("flex");
+    document.getElementById("modal-tambah-kelas")!.classList.add("hidden");
+});
+
+document.getElementById("btn-simpan-tambah-kelas")?.addEventListener("click", () => {
+    let inputEl = document.getElementById("input-tambah-kelas-nama") as HTMLInputElement;
+    if (!inputEl) return;
+    let namaKelas = inputEl.value;
+    
+    if (namaKelas && namaKelas.trim() !== "") {
+      let k = namaKelas.trim();
+      let listStr = localStorage.getItem("cikguscan_senarai_kelas_" + window.currentUser) || "[]";
+      let senaraiKelas = JSON.parse(listStr);
+      if (!senaraiKelas.includes(k) && k !== "Kelas Umum") {
+        senaraiKelas.push(k);
+        localStorage.setItem("cikguscan_senarai_kelas_" + window.currentUser, JSON.stringify(senaraiKelas));
+        
+        document.getElementById("modal-tambah-kelas")!.classList.remove("flex");
+        document.getElementById("modal-tambah-kelas")!.classList.add("hidden");
+        
+        paparAlert("Berjaya", "Kelas berjaya ditambah!");
+        muatSenaraiKelasLokal(); // Reload dropdown
+      } else {
+        paparAlert("Perhatian", "Kelas sudah wujud atau nama tidak dibenarkan.");
+      }
+    }
+});
+
 document
   .getElementById("btn-back-pentaksiran")
   ?.addEventListener("click", () => {
