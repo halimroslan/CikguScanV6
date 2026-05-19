@@ -234,6 +234,7 @@ window.addEventListener("DOMContentLoaded", () => {
               isPro: false,
               lastLogin: serverTimestamp(),
               trialCompleted: false,
+              senaraiKelas: [],
             });
             window.isPro = false;
           } else {
@@ -264,6 +265,11 @@ window.addEventListener("DOMContentLoaded", () => {
             window.trialCompleted = data.trialCompleted || false;
             if (data.trialStart) {
                window.trialStart = typeof data.trialStart === 'number' ? data.trialStart : data.trialStart.toMillis();
+            }
+            if (data.senaraiKelas && Array.isArray(data.senaraiKelas)) {
+               localStorage.setItem("cikguscan_senarai_kelas_" + window.currentUser, JSON.stringify(data.senaraiKelas));
+               muatSenaraiKelasLokal();
+               renderKelasList();
             }
           }
 
@@ -3325,6 +3331,9 @@ function renderKelasList() {
           let senaraiKelas = JSON.parse(listStr);
           senaraiKelas.splice(index, 1);
           localStorage.setItem("cikguscan_senarai_kelas_" + window.currentUser, JSON.stringify(senaraiKelas));
+          if (window.currentUserId) {
+              updateDoc(doc(db, "users", window.currentUserId), { senaraiKelas }).catch(() => {});
+          }
           renderKelasList();
           muatSenaraiKelasLokal();
       }
@@ -3559,12 +3568,16 @@ document.getElementById("btn-simpan-tambah-kelas")?.addEventListener("click", ()
       if (!senaraiKelas.includes(k) && k !== "Kelas Umum") {
         senaraiKelas.push(k);
         localStorage.setItem("cikguscan_senarai_kelas_" + window.currentUser, JSON.stringify(senaraiKelas));
+        if (window.currentUserId) {
+            updateDoc(doc(db, "users", window.currentUserId), { senaraiKelas }).catch(() => {});
+        }
         
         document.getElementById("modal-tambah-kelas")!.classList.remove("flex");
         document.getElementById("modal-tambah-kelas")!.classList.add("hidden");
         
         paparAlert("Berjaya", "Kelas berjaya ditambah!");
         muatSenaraiKelasLokal(); // Reload dropdown
+        renderKelasList(); // Refresh list view
       } else {
         paparAlert("Perhatian", "Kelas sudah wujud atau nama tidak dibenarkan.");
       }
