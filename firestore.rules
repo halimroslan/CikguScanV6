@@ -36,13 +36,15 @@ service cloud.firestore {
 
     function isValidUserCreate(data) {
       return data.keys().hasAll(['email', 'isPro', 'lastLogin', 'trialCompleted']) &&
-             data.keys().size() <= 5 && // + proExpireAt (optional)
              data.email == request.auth.token.email &&
              data.isPro is bool &&
              data.lastLogin == request.time &&
              data.trialCompleted is bool &&
              (
                !('proExpireAt' in data) || data.proExpireAt == null || data.proExpireAt is timestamp
+             ) &&
+             (
+               !('trialStart' in data) || data.trialStart == null || data.trialStart is timestamp || data.trialStart is number
              ) &&
              (
                (!data.isPro && !data.trialCompleted) || isAdmin()
@@ -59,6 +61,9 @@ service cloud.firestore {
              ) &&
              (
                !('proExpireAt' in data) || data.proExpireAt == null || data.proExpireAt is timestamp
+             ) &&
+             (
+               !('trialStart' in data) || data.trialStart == null || data.trialStart is timestamp || data.trialStart is number
              );
     }
 
@@ -76,8 +81,9 @@ service cloud.firestore {
                          (
                            request.auth.uid == userId &&
                            isValidUserUpdate(incoming(), existing()) &&
-                           incoming().diff(existing()).affectedKeys().hasOnly(['lastLogin', 'isPro', 'proExpireAt']) &&
+                           incoming().diff(existing()).affectedKeys().hasOnly(['lastLogin', 'isPro', 'proExpireAt', 'trialCompleted', 'trialStart']) &&
                            (
+                             (existing().isPro == incoming().isPro) ||
                              (existing().isPro == true && incoming().isPro == false) ||
                              (existing().isPro == false && incoming().isPro == false)
                            )

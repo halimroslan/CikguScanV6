@@ -53,6 +53,8 @@ declare global {
     isPro: boolean;
     proExpireAt: number | null;
     trialInterval: any;
+    trialStart: number | null;
+    trialCompleted: boolean;
     JUMLAH_SOALAN: number;
     PILIHAN: string[];
     skemaJawapan: string[];
@@ -81,6 +83,8 @@ window.isLoginMode = false;
 window.isPro = false;
 window.proExpireAt = null;
 window.trialInterval = null;
+window.trialStart = null;
+window.trialCompleted = false;
 window.JUMLAH_SOALAN = 40;
 window.PILIHAN = ["A", "B", "C", "D"];
 window.mulaImbasSemulaRekod = (id: string) => {
@@ -138,6 +142,51 @@ const LOGO_TEPI_HTML = `
         <span class="text-[5px] sm:text-[6px] font-medium bg-black text-white px-1 py-[1px] rounded-full">By Sir Halim</span>
     </div>
 `;
+
+function updateStatusHeader() {
+  let statusEl = document.getElementById("header-user-status");
+  if (!statusEl) return;
+  
+  if (window.isPro) {
+    statusEl.innerText = "Akaun PRO";
+    statusEl.className = "text-[9px] sm:text-[10px] font-bold uppercase tracking-wider whitespace-nowrap text-blue-600";
+    return;
+  }
+  
+  if (window.trialStart && !window.trialCompleted) {
+    let elapsed = Math.floor((Date.now() - window.trialStart) / 1000);
+    let remaining = 7200 - elapsed; // 2 hours
+    
+    if (remaining > 0) {
+      let h = Math.floor(remaining / 3600);
+      let m = Math.floor((remaining % 3600) / 60);
+      let s = remaining % 60;
+      let timeStr = `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+      
+      statusEl.innerText = `AKAUN PRO (TRIAL) ${timeStr}`;
+      statusEl.className = "text-[9px] sm:text-[10px] font-bold uppercase tracking-wider whitespace-nowrap text-orange-500";
+      
+      if (!window.trialInterval) {
+        window.trialInterval = setInterval(() => updateStatusHeader(), 1000);
+      }
+      return;
+    } else {
+       if (!window.trialCompleted) {
+         window.trialCompleted = true;
+         if (window.currentUserId) {
+            updateDoc(doc(db, "users", window.currentUserId), { trialCompleted: true, lastLogin: serverTimestamp() }).catch(() => {});
+         }
+       }
+       if (window.trialInterval) {
+         clearInterval(window.trialInterval);
+         window.trialInterval = null;
+       }
+    }
+  }
+
+  statusEl.innerText = "Akaun Percuma";
+  statusEl.className = "text-[9px] sm:text-[10px] font-bold uppercase tracking-wider whitespace-nowrap text-apple-textMuted";
+}
 
 window.addEventListener("DOMContentLoaded", () => {
   onAuthStateChanged(auth, (user) => {
@@ -207,13 +256,13 @@ window.addEventListener("DOMContentLoaded", () => {
                 window.proExpireAt = data.proExpireAt.toMillis();
               }
             }
+            window.trialCompleted = data.trialCompleted || false;
+            if (data.trialStart) {
+               window.trialStart = typeof data.trialStart === 'number' ? data.trialStart : data.trialStart.toMillis();
+            }
           }
 
-          let statusEl = document.getElementById("header-user-status");
-          if (statusEl) {
-            statusEl.innerText = window.isPro ? "Akaun PRO" : "Akaun Biasa";
-            statusEl.classList.add("text-blue-600");
-          }
+          updateStatusHeader();
         })
         .catch((err) => console.error("Error setting user profile", err));
 
@@ -2047,6 +2096,117 @@ function analisisImej(sumberCanvas: HTMLCanvasElement) {
   const ctxDebug = canvasDebug.getContext("2d")!;
   ctxDebug.drawImage(sumberCanvas, 0, 0);
 
+  // KIRA KECERAHAN KERTAS UNTUK MENCARI MARKER
+  let size = Math.max(10, geo.boxW * 0.025);
+  let whitePoints = [
+    { x: geo.boxX + geo.boxW * 0.15, y: geo.boxY + geo.boxH * 0.05 },
+    { x: geo.boxX + geo.boxW * 0.85, y: geo.boxY + geo.boxH * 0.05 },
+  ];
+  let highestAvg = 0;
+  for (let wp of whitePoints) {
+    let sx = Math.max(0, Math.min(ctx.canvas.width - size, wp.x - size / 2)),
+      sy = Math.max(0, Math.min(ctx.canvas.height - size, wp.y - size / 2));
+    let cData = ctx.getImageData(sx, sy, size, size),
+      sum = 0;
+    for (let k = 0; k < cData.data.length; k += 4)
+      sum +=
+        0.299 * cData.data[k] +
+        0.587 * cData.data[k + 1] +
+        0.114 * cData.data[k + 2];
+    let avg = sum / (cData.data.length / 4);
+    if (avg > highestAvg) highestAvg = avg;
+  }
+  let paperBrightness = highestAvg || 200;
+  let darkThreshold = paperBrightness * CONFIG_IMBASAN.ambangMarkerHitam;
+
+  // FUNGSI MENCARI PUSAT MARKER DENGAN PENCARIAN TEMPATAN
+  function findMarkerCenter(targetX: number, targetY: number, customRadius?: number) {
+    let srcRadius = Math.max(25, customRadius || geo.boxW * 0.1);
+    let sx = Math.max(0, Math.round(targetX - srcRadius));
+    let sy = Math.max(0, Math.round(targetY - srcRadius));
+    let sw = Math.min(ctx.canvas.width - sx, Math.round(srcRadius * 2));
+    let sh = Math.min(ctx.canvas.height - sy, Math.round(srcRadius * 2));
+
+    if (sw <= 0 || sh <= 0) return { x: targetX, y: targetY, found: false };
+
+    let imgData = ctx.getImageData(sx, sy, sw, sh);
+    let pixels = imgData.data;
+    let sumX = 0, sumY = 0, darkCount = 0;
+
+    for (let y = 0; y < sh; y++) {
+      for (let x = 0; x < sw; x++) {
+        let idx = (y * sw + x) * 4;
+        let brightness = 0.299 * pixels[idx] + 0.587 * pixels[idx+1] + 0.114 * pixels[idx+2];
+        if (brightness < darkThreshold) {
+          sumX += x;
+          sumY += y;
+          darkCount++;
+        }
+      }
+    }
+
+    if (darkCount > 5) {
+      let cx = sumX / darkCount;
+      let cy = sumY / darkCount;
+      return { x: sx + cx, y: sy + cy, found: true };
+    }
+    return { x: targetX, y: targetY, found: false };
+  }
+
+  let tl = findMarkerCenter(geo.boxX, geo.boxY, geo.boxW * 0.12);
+  let tr = findMarkerCenter(geo.boxX + geo.boxW, geo.boxY, geo.boxW * 0.12);
+  let bl = findMarkerCenter(geo.boxX, geo.boxY + geo.boxH, geo.boxW * 0.12);
+  let br = findMarkerCenter(geo.boxX + geo.boxW, geo.boxY + geo.boxH, geo.boxW * 0.12);
+
+  let expectedMlX = (tl.x + bl.x) / 2;
+  let expectedMlY = (tl.y + bl.y) / 2;
+  let expectedMrX = (tr.x + br.x) / 2;
+  let expectedMrY = (tr.y + br.y) / 2;
+
+  let ml = findMarkerCenter(expectedMlX, expectedMlY, geo.boxW * 0.08);
+  let mr = findMarkerCenter(expectedMrX, expectedMrY, geo.boxW * 0.08);
+
+  function mapPoint(x: number, y: number) {
+    let u = (x - geo.boxX) / geo.boxW;
+    let rawV = (y - geo.boxY) / geo.boxH;
+    
+    // Split quad interpolation to handle camera perspective better
+    if (rawV < 0.5) {
+      let v = rawV * 2.0; // scale 0-0.5 to 0-1 for top quad
+      let mapX = (1 - u) * (1 - v) * tl.x + u * (1 - v) * tr.x + (1 - u) * v * ml.x + u * v * mr.x;
+      let mapY = (1 - u) * (1 - v) * tl.y + u * (1 - v) * tr.y + (1 - u) * v * ml.y + u * v * mr.y;
+      return { x: mapX, y: mapY };
+    } else {
+      let v = (rawV - 0.5) * 2.0; // scale 0.5-1 to 0-1 for bottom quad
+      let mapX = (1 - u) * (1 - v) * ml.x + u * (1 - v) * mr.x + (1 - u) * v * bl.x + u * v * br.x;
+      let mapY = (1 - u) * (1 - v) * ml.y + u * (1 - v) * mr.y + (1 - u) * v * bl.y + u * v * br.y;
+      return { x: mapX, y: mapY };
+    }
+  }
+
+  // Tanda marker dikesan untuk tujuan debug
+  ctxDebug.fillStyle = "rgba(255, 0, 0, 0.7)";
+  [tl, tr, ml, mr, bl, br].forEach(pt => {
+    ctxDebug.beginPath();
+    ctxDebug.arc(pt.x, pt.y, 6, 0, Math.PI * 2);
+    ctxDebug.fill();
+  });
+
+  // Tanda titik panduan asal (biru)
+  ctxDebug.fillStyle = "rgba(0, 113, 227, 0.7)";
+  [
+    {x: geo.boxX, y: geo.boxY},
+    {x: geo.boxX + geo.boxW, y: geo.boxY},
+    {x: geo.boxX, y: geo.boxY + geo.boxH * 0.5},
+    {x: geo.boxX + geo.boxW, y: geo.boxY + geo.boxH * 0.5},
+    {x: geo.boxX, y: geo.boxY + geo.boxH},
+    {x: geo.boxX + geo.boxW, y: geo.boxY + geo.boxH}
+  ].forEach(pt => {
+    ctxDebug.beginPath();
+    ctxDebug.arc(pt.x, pt.y, 4, 0, Math.PI * 2);
+    ctxDebug.fill();
+  });
+
   ctxDebug.strokeStyle = "rgba(0, 113, 227, 0.4)";
   ctxDebug.lineWidth = 3;
   ctxDebug.strokeRect(geo.boxX, geo.boxY, geo.boxW, geo.boxH);
@@ -2075,11 +2235,16 @@ function analisisImej(sumberCanvas: HTMLCanvasElement) {
   for (let i = 0; i < window.JUMLAH_SOALAN; i++) {
     let { cy, posX } = geo.getPilihanGeometri(i);
     let tahapKegelapan: number[] = [];
+    let mappedPositions: {x: number, y: number}[] = [];
+
     for (let j = 0; j < window.PILIHAN.length; j++) {
       let cx = posX[j];
+      let mapped = mapPoint(cx, cy);
+      mappedPositions.push(mapped);
+
       let imgData = ctx.getImageData(
-        cx - scanR,
-        cy - scanR,
+        Math.max(0, mapped.x - scanR),
+        Math.max(0, mapped.y - scanR),
         scanR * 2,
         scanR * 2,
       );
@@ -2122,16 +2287,20 @@ function analisisImej(sumberCanvas: HTMLCanvasElement) {
     }
 
     for (let j = 0; j < window.PILIHAN.length; j++) {
-      let cx = posX[j];
+      let mapped = mappedPositions[j];
       ctxDebug.beginPath();
-      ctxDebug.arc(cx, cy, r, 0, 2 * Math.PI);
+      ctxDebug.arc(mapped.x, mapped.y, r, 0, 2 * Math.PI);
       if (window.PILIHAN[j] === pilihanPelajar) {
-        if (betul) {
+        if (pilihanPelajar === "BATAL") {
+           ctxDebug.fillStyle = "rgba(251, 146, 60, 0.6)";
+           ctxDebug.fill();
+        } else if (betul) {
           ctxDebug.fillStyle = "rgba(34, 197, 94, 0.6)";
+          ctxDebug.fill();
         } else {
           ctxDebug.fillStyle = "rgba(239, 68, 68, 0.6)";
+          ctxDebug.fill();
         }
-        ctxDebug.fill();
       } else if (
         pilihanPelajar === "BATAL" &&
         avgPaper - tahapKegelapan[j] > CONFIG_IMBASAN.ambangKosong
@@ -2203,22 +2372,30 @@ function analisisImej(sumberCanvas: HTMLCanvasElement) {
   let imejPenuhDataUrlUnmarked = canvasAI.toDataURL("image/jpeg", 0.5);
 
   let peratus = (markah / window.JUMLAH_SOALAN) * 100;
-  let proBulan =
-    parseInt(
-      localStorage.getItem("cikguscan_pro_bulan_" + window.currentUser) as any,
-    ) || 0;
+  let proBulan = 0;
   let isPro = window.isPro || false;
-  let trialFinished = false;
-  let trialStart = localStorage.getItem(
-    "cikguscan_trial_start_" + window.currentUser,
-  );
-
-  // Trial logic removed, isPro is true
-
   let isTrialActive = false;
-  if (!isPro && proBulan <= 0 && !trialFinished && trialStart) {
-    let elapsed = Math.floor((Date.now() - parseInt(trialStart)) / 1000);
-    if (elapsed < 3600) isTrialActive = true;
+  
+  if (!isPro && !window.trialCompleted) {
+    if (!window.trialStart) {
+      window.trialStart = Date.now();
+      if (window.currentUserId) {
+        updateDoc(doc(db, "users", window.currentUserId), { trialStart: window.trialStart, lastLogin: serverTimestamp() }).catch(() => {});
+      }
+      paparAlert("Akaun PRO Diaktifkan!", "Tahniah! Cikgu mendapat akses penuh ciri-ciri PRO untuk 2 jam seterusnya.");
+      updateStatusHeader();
+    }
+    
+    let elapsed = Math.floor((Date.now() - window.trialStart) / 1000);
+    if (elapsed < 7200) {
+      isTrialActive = true;
+    } else {
+      window.trialCompleted = true;
+      if (window.currentUserId) {
+         updateDoc(doc(db, "users", window.currentUserId), { trialCompleted: true, lastLogin: serverTimestamp() }).catch(() => {});
+      }
+      updateStatusHeader();
+    }
   }
 
   const finaliseRekod = (
@@ -2297,15 +2474,8 @@ function analisisImej(sumberCanvas: HTMLCanvasElement) {
     finaliseRekod(markah, butiran, true, "pending");
     window.idUntukGanti = null;
 
-    let aiIndicator = document.getElementById("ai-verifying-indicator");
-    if (aiIndicator) {
-      aiIndicator.classList.remove("hidden");
-    }
-
     verifikasiAI(imejPenuhDataUrlUnmarked, imejNamaDataUrl, butiran)
       .then((res) => {
-        if (aiIndicator) aiIndicator.classList.add("hidden");
-
         if (res) {
           window.idUntukGanti = pendingId;
           finaliseRekod(
@@ -2349,7 +2519,6 @@ function analisisImej(sumberCanvas: HTMLCanvasElement) {
         }
       })
       .catch((err) => {
-        if (aiIndicator) aiIndicator.classList.add("hidden");
         console.error("AI Ralat", err);
         window.idUntukGanti = pendingId;
         finaliseRekod(markah, butiran, false, "failed");
@@ -2377,20 +2546,15 @@ function paparKeputusan(
 ) {
   if (isTukarTab) tukarTab("keputusan");
   let peratus = (markah / window.JUMLAH_SOALAN) * 100;
-  let proBulan =
-    parseInt(
-      localStorage.getItem("cikguscan_pro_bulan_" + window.currentUser) as any,
-    ) || 0;
+  let proBulan = 0;
   let isPro = window.isPro || false;
-  let trialFinished = false;
-  let trialStart = localStorage.getItem(
-    "cikguscan_trial_start_" + window.currentUser,
-  );
-
   let isTrialActive = false;
-  if (!isPro && proBulan <= 0 && !trialFinished && trialStart) {
-    let elapsed = Math.floor((Date.now() - parseInt(trialStart)) / 1000);
-    if (elapsed < 3600) isTrialActive = true;
+  
+  if (!isPro && window.trialStart && !window.trialCompleted) {
+    let elapsed = Math.floor((Date.now() - window.trialStart) / 1000);
+    if (elapsed < 7200) {
+      isTrialActive = true;
+    }
   }
 
   document.getElementById("skor-markah")!.innerText = markah.toString();
@@ -2515,20 +2679,15 @@ document
   .addEventListener("change", kemaskiniJumlahSoalan);
 
 function tukarTab(idTab: string) {
-  let proBulan =
-    parseInt(
-      localStorage.getItem("cikguscan_pro_bulan_" + window.currentUser) as any,
-    ) || 0;
-  let trialFinished = false;
-  let trialStart = localStorage.getItem(
-    "cikguscan_trial_start_" + window.currentUser,
-  );
+  let proBulan = 0;
   let isPro = window.isPro || false;
-
   let isTrialActive = false;
-  if (proBulan <= 0 && !isPro && !trialFinished && trialStart) {
-    let elapsed = Math.floor((Date.now() - parseInt(trialStart)) / 1000);
-    if (elapsed < 3600) isTrialActive = true;
+  
+  if (!isPro && window.trialStart && !window.trialCompleted) {
+    let elapsed = Math.floor((Date.now() - window.trialStart) / 1000);
+    if (elapsed < 7200) {
+      isTrialActive = true;
+    }
   }
 
   if (idTab === "analisis") {
@@ -2571,7 +2730,7 @@ function tukarTab(idTab: string) {
       banner.classList.add("hidden");
     }
 
-    if (proBulan > 0 || !trialFinished) {
+    if (isPro || proBulan > 0 || isTrialActive) {
       if (
         window.kelasSemasa === "Kelas Umum" ||
         window.kelasSemasa.trim() === ""
@@ -3072,7 +3231,7 @@ function janaBorangSkema() {
     let htmlRadio = window.PILIHAN.map(
       (p) => `
             <label class="flex items-center justify-center w-8 h-8 relative cursor-pointer group">
-                <input type="radio" name="soalan_${i}" value="${p}" class="peer sr-only" ${window.skemaJawapan[i] === p ? "checked" : ""} onchange="window.skemaJawapan[${i}] = '${p}'">
+                <input type="radio" name="soalan_${i}" value="${p}" class="peer sr-only" ${window.skemaJawapan[i] === p ? "checked" : ""} onchange="window.skemaJawapan[${i}] = '${p}'; setTimeout(() => janaBorangSkemaOMR(), 50);">
                 <div class="w-8 h-8 rounded-full border-2 border-apple-border flex items-center justify-center peer-checked:bg-apple-blue peer-checked:border-apple-blue transition-all duration-200 group-hover:border-apple-blue/50">
                     <span class="text-sm font-medium text-apple-text peer-checked:text-white transition-colors">${p}</span>
                 </div>
@@ -3085,6 +3244,7 @@ function janaBorangSkema() {
         `;
     bekas.appendChild(divSoalan);
   }
+  setTimeout(() => janaBorangSkemaOMR(), 50);
 }
 
 // --- PENTAKSIRAN LOGIC ---
@@ -3284,6 +3444,8 @@ function openPentaksiranForm(id: string | null = null) {
 
   window.editingPentaksiranId = id;
 
+  let btnPrintSkema = document.getElementById("btn-print-skema");
+
   if (id) {
     const p = window.pentaksiranList.find((x) => x.id === id);
     if (p) {
@@ -3296,6 +3458,8 @@ function openPentaksiranForm(id: string | null = null) {
         "input-jumlah-soalan",
       ) as HTMLInputElement;
       if (inputJumlah) inputJumlah.value = p.jumlahSoalan.toString();
+      
+      if (btnPrintSkema) btnPrintSkema.classList.remove("hidden");
     }
   } else {
     title.innerText = "Tambah Pentaksiran";
@@ -3306,6 +3470,8 @@ function openPentaksiranForm(id: string | null = null) {
       "input-jumlah-soalan",
     ) as HTMLInputElement;
     if (inputJumlah) inputJumlah.value = "40";
+    
+    if (btnPrintSkema) btnPrintSkema.classList.add("hidden");
   }
 
   janaBorangSkema();
@@ -3447,11 +3613,13 @@ async function simpanSkema() {
 
     btn.innerText = "Tersimpan! ✓";
     btn.classList.replace("bg-apple-blue", "bg-green-500");
+    let btnPrintSkema = document.getElementById("btn-print-skema");
+    if (btnPrintSkema) btnPrintSkema.classList.remove("hidden");
+    
     setTimeout(() => {
       btn.innerText = textAsal;
       btn.classList.replace("bg-green-500", "bg-apple-blue");
       btn.disabled = false;
-      document.getElementById("btn-back-pentaksiran")?.click(); // Go back to list
     }, 1500);
   } catch (error) {
     console.error("Error saving pentaksiran:", error);
@@ -3491,28 +3659,23 @@ function janaBorangSkemaOMR() {
   if (!bekas) return;
   bekas.innerHTML = "";
   bekas.style.height = "auto";
+  bekas.className = "w-full mx-auto mt-8 flex justify-center print:mt-0 print:block";
   let divSet = document.createElement("div");
   if (window.JUMLAH_SOALAN <= 10) {
-    bekas.className =
-      "grid grid-cols-2 gap-y-12 gap-x-8 print:gap-y-16 print:gap-x-12 w-full px-4 print:px-8";
     divSet.className =
-      "bg-white flex flex-col justify-start print:border-none break-inside-avoid max-w-[320px] mx-auto w-full";
+      "bg-white flex flex-col justify-start print:border-none break-inside-avoid max-w-[320px] w-full mx-auto";
     divSet.innerHTML = getFormHTMLTemplate10(window.skemaJawapan, true);
   } else if (window.JUMLAH_SOALAN <= 20) {
-    bekas.className =
-      "grid grid-cols-2 gap-y-12 gap-x-8 print:gap-y-16 print:gap-x-12 w-full px-4 print:px-8";
     divSet.className =
-      "bg-white flex flex-col justify-start print:border-none break-inside-avoid max-w-[320px] mx-auto w-full";
+      "bg-white flex flex-col justify-start print:border-none break-inside-avoid max-w-[320px] w-full mx-auto";
     divSet.innerHTML = getFormHTMLTemplate20(window.skemaJawapan, true);
   } else if (window.JUMLAH_SOALAN <= 30) {
-    bekas.className = "grid grid-cols-2 gap-16 print:gap-24 w-full px-8";
     divSet.className =
-      "bg-white flex flex-col justify-start print:border-none break-inside-avoid max-w-[480px] mx-auto w-full";
+      "bg-white flex flex-col justify-start print:border-none break-inside-avoid max-w-[480px] w-full mx-auto";
     divSet.innerHTML = getFormHTMLTemplate30(window.skemaJawapan, true);
   } else {
-    bekas.className = "grid grid-cols-2 gap-16 print:gap-24 w-full px-8";
     divSet.className =
-      "bg-white flex flex-col justify-start print:border-none break-inside-avoid max-w-[480px] mx-auto w-full";
+      "bg-white flex flex-col justify-start print:border-none break-inside-avoid max-w-[480px] w-full mx-auto";
     divSet.innerHTML = getFormHTMLTemplate40(window.skemaJawapan, true);
   }
   bekas.appendChild(divSet);
