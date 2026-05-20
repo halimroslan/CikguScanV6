@@ -42,7 +42,27 @@ let deferredPrompt: any;
 window.addEventListener("beforeinstallprompt", (e) => {
   e.preventDefault();
   deferredPrompt = e;
+  const btnInstall = document.getElementById("btn-install-pwa");
+  if (btnInstall) {
+    btnInstall.classList.remove("hidden");
+    btnInstall.classList.add("flex");
+  }
 });
+
+const btnInstallPwa = document.getElementById("btn-install-pwa");
+if (btnInstallPwa) {
+  btnInstallPwa.addEventListener("click", async () => {
+    if (deferredPrompt) {
+      deferredPrompt.prompt();
+      const { outcome } = await deferredPrompt.userChoice;
+      if (outcome === 'accepted') {
+        deferredPrompt = null;
+        btnInstallPwa.classList.add("hidden");
+        btnInstallPwa.classList.remove("flex");
+      }
+    }
+  });
+}
 
 import { GoogleGenAI, Type } from "@google/genai";
 
@@ -1953,6 +1973,11 @@ ${butiranAsal.map((b: any, i: number) => `S${i + 1}: Jawapan yang dipilih ${b.ja
 
 Sila semak semula gambar helaian OMR pelajar ini (serta keratan nama sekiranya ada) dan berikan ketepatan muktamad.
 Terdapat ${window.JUMLAH_SOALAN} soalan semuanya. Kertas ini mungkin mempunyai kecacatan (tersenget dsb). Jika pelajar bulatkan lebih dari satu pilihan, set statusnya sebagai BATAL. Jika tiada jawapan dibulatkan, status KOSONG. Siri markah asal daripada sistem tempatan adalah agak tepat. Anda hanya perlu membuat pembetulan logik jika ada kesilapan silau dan sebagainya.
+
+**PENTING - SEMAKAN BULATAN (OMR):**
+- Tolong sahkan secara teliti setiap bulatan sekiranya sistem tempatan terlepas pandang.
+- Sila ambil kira bulatan yang DILOREK SECARA TIDAK SEMPURNA (sebagai contoh, hanya lorekan kasar, sebahagian dakwat/terconteng, atau bulatan yang tidak dihitamkan sepenuhnya). Selagi ada tanda niat untuk memilih di dalam bulatan tersebut, anggap ia sebagai jawapan yang dipilih.
+- Jangan terlepas pandang lorekan atau tanda kecil di dalam bulatan.
 
 **MANDATORI OCR TULISAN TANGAN:**
 Sekiranya imej keratan nama disertakan, anda MESTI BACA DAN TEKA SEBAIK MUNGKIN tulisan tangan tersebut untuk mendapatkan nama pelajar, nombor kad pengenalan, nombor matrik, darjah/kelas, atau apa-apa maklumat bertulis di bahagian atas kertas. 
