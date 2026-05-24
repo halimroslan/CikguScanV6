@@ -13,7 +13,7 @@ export default defineConfig(({mode}) => {
       VitePWA({
         registerType: 'autoUpdate',
         injectRegister: null,
-        includeAssets: ['icon.svg', 'apple-touch-icon.png'],
+        includeAssets: ['icon.svg', 'apple-touch-icon.png', 'icon-144.png'],
         manifest: {
           name: 'CikguScan',
           short_name: 'CikguScan',
@@ -23,6 +23,12 @@ export default defineConfig(({mode}) => {
           display: 'standalone',
           start_url: '/',
           icons: [
+            {
+              src: '/icon-144.png',
+              sizes: '144x144',
+              type: 'image/png',
+              purpose: 'any'
+            },
             {
               src: '/pwa-192x192.png',
               sizes: '192x192',
