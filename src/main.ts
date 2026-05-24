@@ -1,11 +1,3 @@
-if (window.location.hostname === "cikgu-scan.vercel.app") {
-  window.location.href =
-    "https://cikguscan-414396564667.asia-southeast1.run.app" +
-    window.location.pathname +
-    window.location.search +
-    window.location.hash;
-}
-
 import "./index.css";
 import { registerSW } from "virtual:pwa-register";
 import {
@@ -38,15 +30,24 @@ if ("serviceWorker" in navigator) {
 }
 
 // PWA Install Prompt Logic
-let deferredPrompt: any;
-window.addEventListener("beforeinstallprompt", (e) => {
-  e.preventDefault();
+let deferredPrompt: any = (window as any).deferredPromptEvent;
+
+function showInstallButton(e: any) {
   deferredPrompt = e;
-  const btnInstall = document.getElementById("btn-install-pwa");
+  let btnInstall = document.getElementById("btn-install-pwa");
   if (btnInstall) {
     btnInstall.classList.remove("hidden");
     btnInstall.classList.add("flex");
   }
+}
+
+if (deferredPrompt) {
+  showInstallButton(deferredPrompt);
+}
+
+window.addEventListener("beforeinstallprompt", (e) => {
+  e.preventDefault();
+  showInstallButton(e);
 });
 
 const btnInstallPwa = document.getElementById("btn-install-pwa");
@@ -57,6 +58,7 @@ if (btnInstallPwa) {
       const { outcome } = await deferredPrompt.userChoice;
       if (outcome === 'accepted') {
         deferredPrompt = null;
+        (window as any).deferredPromptEvent = null;
         btnInstallPwa.classList.add("hidden");
         btnInstallPwa.classList.remove("flex");
       }
@@ -248,17 +250,24 @@ window.addEventListener("DOMContentLoaded", () => {
       const userRef = doc(db, "users", user.uid);
       getDoc(userRef)
         .then(async (docSnap) => {
+          let localKelasStr = localStorage.getItem("cikguscan_senarai_kelas_" + user.email) || "[]";
+          let localKelasLocalStr = localStorage.getItem("cikguscan_senarai_kelas_local") || "[]";
+          let allLocalKelas = Array.from(new Set([ ...JSON.parse(localKelasStr), ...JSON.parse(localKelasLocalStr) ]));
+
           if (!docSnap.exists()) {
             await setDoc(userRef, {
               email: user.email,
               isPro: false,
               lastLogin: serverTimestamp(),
               trialCompleted: false,
-              senaraiKelas: [],
+              senaraiKelas: [...allLocalKelas],
             });
             window.isPro = false;
           } else {
             let data = docSnap.data();
+            let cloudKelas = data.senaraiKelas || [];
+            let mergedClasses = Array.from(new Set([...cloudKelas, ...allLocalKelas]));
+            
             let isExpired = false;
             if (data.isPro && data.proExpireAt) {
               let expireTime = data.proExpireAt.toMillis();
@@ -271,27 +280,38 @@ window.addEventListener("DOMContentLoaded", () => {
                 isPro: false,
                 proExpireAt: null,
                 lastLogin: serverTimestamp(),
+                senaraiKelas: mergedClasses,
               });
               window.isPro = false;
             } else {
               await updateDoc(userRef, {
                 lastLogin: serverTimestamp(),
+                senaraiKelas: mergedClasses,
               });
               window.isPro = data.isPro || false;
               if (data.proExpireAt) {
                 window.proExpireAt = data.proExpireAt.toMillis();
               }
             }
-            window.trialCompleted = data.trialCompleted || false;
-            if (data.trialStart) {
-               window.trialStart = typeof data.trialStart === 'number' ? data.trialStart : data.trialStart.toMillis();
-            }
-            if (data.senaraiKelas && Array.isArray(data.senaraiKelas)) {
-               localStorage.setItem("cikguscan_senarai_kelas_" + window.currentUser, JSON.stringify(data.senaraiKelas));
-               muatSenaraiKelasLokal();
-               renderKelasList();
-            }
           }
+          
+          if (docSnap.exists()) {
+             let data = docSnap.data();
+             window.trialCompleted = data.trialCompleted || false;
+             if (data.trialStart) {
+                window.trialStart = typeof data.trialStart === 'number' ? data.trialStart : data.trialStart.toMillis();
+             }
+             
+             // The cloudKelas was already merged and uploaded. Let's make sure the UI receives the merged version.
+             let cloudKelas = data.senaraiKelas || [];
+             let mergedClasses = Array.from(new Set([...cloudKelas, ...allLocalKelas]));
+             localStorage.setItem("cikguscan_senarai_kelas_" + window.currentUser, JSON.stringify(mergedClasses));
+          } else {
+             localStorage.setItem("cikguscan_senarai_kelas_" + window.currentUser, JSON.stringify(allLocalKelas));
+          }
+          
+          muatSenaraiKelasLokal();
+          renderKelasList();
 
           updateStatusHeader();
         })
@@ -3357,7 +3377,7 @@ function renderKelasList() {
           senaraiKelas.splice(index, 1);
           localStorage.setItem("cikguscan_senarai_kelas_" + window.currentUser, JSON.stringify(senaraiKelas));
           if (window.currentUserId) {
-              updateDoc(doc(db, "users", window.currentUserId), { senaraiKelas }).catch(() => {});
+              updateDoc(doc(db, "users", window.currentUserId), { senaraiKelas }).catch((e) => console.error("Failed to delete senarai kelas", e));
           }
           renderKelasList();
           muatSenaraiKelasLokal();
@@ -3594,7 +3614,7 @@ document.getElementById("btn-simpan-tambah-kelas")?.addEventListener("click", ()
         senaraiKelas.push(k);
         localStorage.setItem("cikguscan_senarai_kelas_" + window.currentUser, JSON.stringify(senaraiKelas));
         if (window.currentUserId) {
-            updateDoc(doc(db, "users", window.currentUserId), { senaraiKelas }).catch(() => {});
+            updateDoc(doc(db, "users", window.currentUserId), { senaraiKelas }).catch((e) => console.error("Failed to update senarai kelas", e));
         }
         
         document.getElementById("modal-tambah-kelas")!.classList.remove("flex");
