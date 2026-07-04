@@ -1891,56 +1891,106 @@ function lukisPanduan(ctx: any, cw: number, ch: number, geo: any) {
   }
 }
 
-function semakAutoSnap(ctx: any, geo: any) {
-  let size = Math.max(10, geo.boxW * 0.025),
-    half = size / 2;
-  let whitePoints = [
-    { x: geo.boxX + geo.boxW * 0.15, y: geo.boxY + geo.boxH * 0.05 },
-    { x: geo.boxX + geo.boxW * 0.85, y: geo.boxY + geo.boxH * 0.05 },
-  ];
-  let highestAvg = 0;
-  for (let wp of whitePoints) {
-    let sx = Math.max(0, Math.min(ctx.canvas.width - size, wp.x - half)),
-      sy = Math.max(0, Math.min(ctx.canvas.height - size, wp.y - half));
-    let cData = ctx.getImageData(sx, sy, size, size),
-      sum = 0;
-    for (let i = 0; i < cData.data.length; i += 4)
-      sum +=
-        0.299 * cData.data[i] +
-        0.587 * cData.data[i + 1] +
-        0.114 * cData.data[i + 2];
-    let avg = sum / (cData.data.length / 4);
-    if (avg > highestAvg) highestAvg = avg;
-  }
+// ==========================================
+// HOMOGRAPHY & COMPUTER VISION ENGINE
+// ==========================================
+let latestHomography: number[] | null = null;
+let latestPaperBrightness = 200;
 
-  let paperBrightness = highestAvg || 200;
-  if (paperBrightness < 90) return false;
-
-  let darkThreshold = paperBrightness * CONFIG_IMBASAN.ambangMarkerHitam,
-    requiredDarkPixelsRatio = CONFIG_IMBASAN.nisbahPikselMarker;
-  let titikUjian = [
-    { x: geo.boxX - half, y: geo.boxY - half },
-    { x: geo.boxX + geo.boxW - half, y: geo.boxY - half },
-    { x: geo.boxX - half, y: geo.boxY + geo.boxH / 2 - half },
-    { x: geo.boxX + geo.boxW - half, y: geo.boxY + geo.boxH / 2 - half },
-    { x: geo.boxX - half, y: geo.boxY + geo.boxH - half },
-    { x: geo.boxX + geo.boxW - half, y: geo.boxY + geo.boxH - half },
-  ];
-
-  for (let pt of titikUjian) {
-    let ptx = Math.max(0, Math.min(ctx.canvas.width - size, pt.x)),
-      pty = Math.max(0, Math.min(ctx.canvas.height - size, pt.y));
-    let imgData = ctx.getImageData(ptx, pty, size, size),
-      pixels = imgData.data,
-      darkCount = 0,
-      totalPixels = pixels.length / 4;
-    for (let i = 0; i < pixels.length; i += 4) {
-      let brightness =
-        0.299 * pixels[i] + 0.587 * pixels[i + 1] + 0.114 * pixels[i + 2];
-      if (brightness < darkThreshold) darkCount++;
+function getHomography(src: {x:number, y:number}[], dst: {x:number, y:number}[]) {
+    let a: number[][] = [];
+    for (let i = 0; i < 4; i++) {
+        a.push([src[i].x, src[i].y, 1, 0, 0, 0, -src[i].x * dst[i].x, -src[i].y * dst[i].x, dst[i].x]);
+        a.push([0, 0, 0, src[i].x, src[i].y, 1, -src[i].x * dst[i].y, -src[i].y * dst[i].y, dst[i].y]);
     }
-    if (darkCount / totalPixels < requiredDarkPixelsRatio) return false;
+    for (let i = 0; i < 8; i++) {
+        let max = i;
+        for (let j = i + 1; j < 8; j++) if (Math.abs(a[j][i]) > Math.abs(a[max][i])) max = j;
+        let temp = a[i]; a[i] = a[max]; a[max] = temp;
+        for (let j = i + 1; j < 9; j++) a[i][j] /= a[i][i];
+        for (let j = 0; j < 8; j++) {
+            if (i !== j) {
+                for (let k = i + 1; k < 9; k++) a[j][k] -= a[j][i] * a[i][k];
+            }
+        }
+    }
+    return [a[0][8], a[1][8], a[2][8], a[3][8], a[4][8], a[5][8], a[6][8], a[7][8], 1];
+}
+
+function transformPoint(h: number[], x: number, y: number) {
+    let w = h[6]*x + h[7]*y + h[8];
+    return {
+        x: (h[0]*x + h[1]*y + h[2]) / w,
+        y: (h[3]*x + h[4]*y + h[5]) / w
+    };
+}
+
+function semakAutoSnap(ctx: any, geo: any) {
+  let searchWindow = Math.max(30, geo.boxW * 0.08); // Dynamic window size for centroid search
+  let half = searchWindow / 2;
+
+  // We track the 4 physical corners of the blue guide box
+  let expectedPoints = [
+      { x: geo.boxX, y: geo.boxY }, // Top-Left
+      { x: geo.boxX + geo.boxW, y: geo.boxY }, // Top-Right
+      { x: geo.boxX, y: geo.boxY + geo.boxH }, // Bottom-Left
+      { x: geo.boxX + geo.boxW, y: geo.boxY + geo.boxH } // Bottom-Right
+  ];
+
+  let actualCorners: {x:number, y:number}[] = [];
+  let avgPaperBright = 0;
+
+  for (let pt of expectedPoints) {
+      let sx = Math.max(0, Math.min(ctx.canvas.width - searchWindow, pt.x - half));
+      let sy = Math.max(0, Math.min(ctx.canvas.height - searchWindow, pt.y - half));
+      let cData = ctx.getImageData(sx, sy, searchWindow, searchWindow);
+      let pixels = cData.data;
+
+      let minB = 255, maxB = 0;
+      let bArr = [];
+      for (let i = 0; i < pixels.length; i += 4) {
+          let b = 0.299 * pixels[i] + 0.587 * pixels[i+1] + 0.114 * pixels[i+2];
+          bArr.push(b);
+          if (b < minB) minB = b;
+          if (b > maxB) maxB = b;
+      }
+
+      // Dynamic Threshold (Lighting Invariance)
+      let thresh = minB + (maxB - minB) * 0.45; 
+      
+      let sumX = 0, sumY = 0, count = 0;
+      let w = searchWindow;
+      for (let idx = 0; idx < bArr.length; idx++) {
+          if (bArr[idx] < thresh) {
+              sumX += (idx % w);
+              sumY += Math.floor(idx / w);
+              count++;
+          }
+      }
+
+      avgPaperBright += maxB; 
+
+      // Centroid Math - Validates marker size (must be solid black square)
+      if (count > (searchWindow*searchWindow)*0.02 && count < (searchWindow*searchWindow)*0.5) {
+          actualCorners.push({
+              x: sx + (sumX / count),
+              y: sy + (sumY / count)
+          });
+      } else {
+          return false; // Failed to find marker at this corner, user needs to adjust
+      }
   }
+
+  latestPaperBrightness = avgPaperBright / 4;
+
+  let theoreticalCorners = [
+      { x: geo.boxX, y: geo.boxY },
+      { x: geo.boxX + geo.boxW, y: geo.boxY },
+      { x: geo.boxX, y: geo.boxY + geo.boxH },
+      { x: geo.boxX + geo.boxW, y: geo.boxY + geo.boxH }
+  ];
+
+  latestHomography = getHomography(theoreticalCorners, actualCorners);
   return true;
 }
 
@@ -2147,6 +2197,12 @@ function analisisImej(sumberCanvas: HTMLCanvasElement) {
   const ch = sumberCanvas.height;
   const geo = dapatkanGeometriOMR(cw, ch);
 
+  if (!latestHomography || !semakAutoSnap(ctx, geo)) {
+      // Fallback ke homography 'identity' (flat) sekiranya snapshot paksaan (manual)
+      latestHomography = [1,0,0, 0,1,0, 0,0,1];
+      latestPaperBrightness = 200;
+  }
+
   const canvasDebug = document.getElementById(
     "canvas-debug",
   ) as HTMLCanvasElement;
@@ -2155,25 +2211,21 @@ function analisisImej(sumberCanvas: HTMLCanvasElement) {
   const ctxDebug = canvasDebug.getContext("2d")!;
   ctxDebug.drawImage(sumberCanvas, 0, 0);
 
+  // Lukis polygon guide (berdasarkan homography)
   ctxDebug.strokeStyle = "rgba(0, 113, 227, 0.4)";
   ctxDebug.lineWidth = 3;
-  ctxDebug.strokeRect(geo.boxX, geo.boxY, geo.boxW, geo.boxH);
-  if (geo.layout === "20" || geo.layout === "30") {
-    let midX = geo.innerX + geo.innerW / 2;
-    ctxDebug.beginPath();
-    ctxDebug.moveTo(midX, geo.trueQuestionStartY);
-    ctxDebug.lineTo(midX, geo.trueQuestionStartY + geo.trueQuestionAreaH);
-    ctxDebug.stroke();
-  } else if (geo.layout === "40") {
-    let col2X = geo.innerX + (geo.innerW - geo.colW) / 2,
-      col3X = geo.innerX + geo.innerW - geo.colW;
-    ctxDebug.beginPath();
-    ctxDebug.moveTo(col2X - geo.innerW * 0.01, geo.innerY);
-    ctxDebug.lineTo(col2X - geo.innerW * 0.01, geo.innerY + geo.innerH);
-    ctxDebug.moveTo(col3X - geo.innerW * 0.01, geo.innerY);
-    ctxDebug.lineTo(col3X - geo.innerW * 0.01, geo.innerY + geo.innerH);
-    ctxDebug.stroke();
-  }
+  let tl = transformPoint(latestHomography, geo.boxX, geo.boxY);
+  let tr = transformPoint(latestHomography, geo.boxX + geo.boxW, geo.boxY);
+  let br = transformPoint(latestHomography, geo.boxX + geo.boxW, geo.boxY + geo.boxH);
+  let bl = transformPoint(latestHomography, geo.boxX, geo.boxY + geo.boxH);
+  
+  ctxDebug.beginPath();
+  ctxDebug.moveTo(tl.x, tl.y);
+  ctxDebug.lineTo(tr.x, tr.y);
+  ctxDebug.lineTo(br.x, br.y);
+  ctxDebug.lineTo(bl.x, bl.y);
+  ctxDebug.closePath();
+  ctxDebug.stroke();
 
   let markah = 0;
   let butiran: any = [];
@@ -2183,14 +2235,20 @@ function analisisImej(sumberCanvas: HTMLCanvasElement) {
   for (let i = 0; i < window.JUMLAH_SOALAN; i++) {
     let { cy, posX } = geo.getPilihanGeometri(i);
     let tahapKegelapan: number[] = [];
+    let transformedPoints: any[] = [];
+
     for (let j = 0; j < window.PILIHAN.length; j++) {
       let cx = posX[j];
-      let imgData = ctx.getImageData(
-        cx - scanR,
-        cy - scanR,
-        scanR * 2,
-        scanR * 2,
-      );
+      let pt = transformPoint(latestHomography, cx, cy);
+      transformedPoints.push(pt);
+      
+      let ux = pt.x, uy = pt.y;
+
+      // Bound check
+      let sx = Math.max(0, Math.min(cw - scanR * 2, ux - scanR));
+      let sy = Math.max(0, Math.min(ch - scanR * 2, uy - scanR));
+
+      let imgData = ctx.getImageData(sx, sy, scanR * 2, scanR * 2);
       let pixels = imgData.data,
         totalBrightness = 0;
       for (let p = 0; p < pixels.length; p += 4) {
@@ -2207,12 +2265,14 @@ function analisisImej(sumberCanvas: HTMLCanvasElement) {
     let diff1 = avgPaper - sortedBright[0];
     let diff2 = avgPaper - sortedBright[1];
 
-    if (diff1 > CONFIG_IMBASAN.ambangKosong) {
+    let dynamicThreshold = Math.max(CONFIG_IMBASAN.ambangKosong, avgPaper * 0.12);
+
+    if (diff1 > dynamicThreshold) {
       let indeksJawapan = tahapKegelapan.indexOf(sortedBright[0]);
       pilihanPelajar = window.PILIHAN[indeksJawapan];
 
       // Semakan 'Double Mark' (BATAL) vs 'Padaman Tak Bersih'
-      if (diff2 > CONFIG_IMBASAN.ambangKosong) {
+      if (diff2 > dynamicThreshold) {
         if (
           sortedBright[1] - sortedBright[0] <
           CONFIG_IMBASAN.pemaafSisaPadaman
@@ -2230,9 +2290,11 @@ function analisisImej(sumberCanvas: HTMLCanvasElement) {
     }
 
     for (let j = 0; j < window.PILIHAN.length; j++) {
-      let cx = posX[j];
+      let ux = transformedPoints[j].x;
+      let uy = transformedPoints[j].y;
+      
       ctxDebug.beginPath();
-      ctxDebug.arc(cx, cy, r, 0, 2 * Math.PI);
+      ctxDebug.arc(ux, uy, r, 0, 2 * Math.PI);
       if (window.PILIHAN[j] === pilihanPelajar) {
         if (betul) {
           ctxDebug.fillStyle = "rgba(34, 197, 94, 0.6)";
@@ -2242,7 +2304,7 @@ function analisisImej(sumberCanvas: HTMLCanvasElement) {
         ctxDebug.fill();
       } else if (
         pilihanPelajar === "BATAL" &&
-        avgPaper - tahapKegelapan[j] > CONFIG_IMBASAN.ambangKosong
+        avgPaper - tahapKegelapan[j] > dynamicThreshold
       ) {
         ctxDebug.fillStyle = "rgba(251, 146, 60, 0.6)";
         ctxDebug.fill();
