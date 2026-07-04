@@ -1955,6 +1955,11 @@ function semakAutoSnap(ctx: any, geo: any) {
           if (b > maxB) maxB = b;
       }
 
+      // Pastikan wujud kontras yang nyata (kertas putih vs marker hitam)
+      if (maxB - minB < 35 || minB > 160) {
+          return false; 
+      }
+
       // Dynamic Threshold (Lighting Invariance)
       let thresh = minB + (maxB - minB) * 0.45; 
       
