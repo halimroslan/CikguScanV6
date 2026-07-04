@@ -1,11 +1,3 @@
-if (window.location.hostname === "cikgu-scan.vercel.app") {
-  window.location.href =
-    "https://cikguscan.onrender.com" +
-    window.location.pathname +
-    window.location.search +
-    window.location.hash;
-}
-
 import "./index.css";
 import { registerSW } from "virtual:pwa-register";
 import {
