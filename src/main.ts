@@ -1786,12 +1786,14 @@ function renderFrameKamera() {
     const geo = dapatkanGeometriOMR(cw, ch);
     lukisPanduan(ctxO, cw, ch, geo);
 
-    (window as any).autoSnapCounter++;
-    if ((window as any).autoSnapCounter > CONFIG_IMBASAN.bingkaiSabar) {
-      (window as any).autoSnapCounter = 0;
-      if (semakAutoSnap(ctxV, geo)) {
+    if (semakAutoSnap(ctxV, geo)) {
+      (window as any).autoSnapCounter++;
+      
+      let ind = document.getElementById("scan-indicator")!;
+      ind.innerText = `Mengunci... (${(window as any).autoSnapCounter}/${CONFIG_IMBASAN.bingkaiSabar})`;
+
+      if ((window as any).autoSnapCounter > CONFIG_IMBASAN.bingkaiSabar) {
         window.isScanning = true;
-        let ind = document.getElementById("scan-indicator")!;
         ind.innerText = "Berjaya!";
         ind.classList.replace("bg-black/40", "bg-green-500/80");
         if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
@@ -1802,6 +1804,14 @@ function renderFrameKamera() {
           tangkapDanTanda(true);
         }, 200);
         return;
+      }
+    } else {
+      (window as any).autoSnapCounter = 0;
+      let ind = document.getElementById("scan-indicator")!;
+      if (ind.innerText !== "Halakan petak biru pada 4 titik hitam bucu") {
+        ind.innerText = "Halakan petak biru pada 4 titik hitam bucu";
+        ind.classList.remove("bg-green-500/80");
+        ind.classList.add("bg-black/40");
       }
     }
   }
