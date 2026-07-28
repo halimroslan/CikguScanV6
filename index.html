@@ -1473,6 +1473,117 @@
       </div>
     </div>
 
+    <!-- BUTTON FLOATING AI (BOTTOM RIGHT) -->
+    <button
+      id="btn-floating-ai"
+      class="fixed bottom-6 right-6 z-[140] flex items-center gap-2 bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 text-white font-bold px-4 py-3 rounded-full shadow-2xl hover:scale-105 active:scale-95 transition-all duration-300 group no-print cursor-pointer border border-white/20"
+      title="Tanya AI CikguScan"
+    >
+      <div class="relative flex items-center justify-center">
+        <svg class="w-6 h-6 animate-pulse text-amber-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+        </svg>
+      </div>
+      <span class="text-sm font-extrabold tracking-wide drop-shadow">AI</span>
+      <span class="absolute -top-1 -right-1 flex h-3 w-3">
+        <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-sky-400 opacity-75"></span>
+        <span class="relative inline-flex rounded-full h-3 w-3 bg-sky-500"></span>
+      </span>
+    </button>
+
+    <!-- MODAL AI CHAT (BOTTOM SHEET / FLOATING DRAWER) -->
+    <div
+      id="modal-ai-chat"
+      class="fixed inset-0 z-[150] bg-black/60 backdrop-blur-md hidden flex-col justify-end sm:justify-center items-center p-0 sm:p-4 no-print transition-all duration-300"
+    >
+      <div
+        class="bg-white w-full sm:max-w-lg h-[85vh] sm:h-[650px] rounded-t-[32px] sm:rounded-[32px] shadow-2xl flex flex-col overflow-hidden border border-gray-100 animate-slide-up"
+      >
+        <!-- Header -->
+        <div class="bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 p-4 sm:p-5 text-white flex justify-between items-center shrink-0">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center text-amber-300 shadow-inner">
+              <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+              </svg>
+            </div>
+            <div>
+              <h3 class="font-bold text-lg leading-tight flex items-center gap-2">
+                Tanya AI CikguScan
+                <span class="text-[10px] bg-white/20 text-white px-2 py-0.5 rounded-full font-normal uppercase tracking-wider">Analisis Pintar</span>
+              </h3>
+              <p class="text-xs text-blue-100 font-medium">Analisis data imbasan & prestasi murid</p>
+            </div>
+          </div>
+          <button
+            id="btn-tutup-ai-chat"
+            class="w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-colors"
+          >
+            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        <!-- Quick Prompt Chips -->
+        <div class="px-4 py-2.5 bg-slate-50 border-b border-slate-100 flex items-center gap-2 overflow-x-auto no-scrollbar shrink-0 text-xs">
+          <span class="text-gray-400 font-medium whitespace-nowrap">Cadangan:</span>
+          <button class="chip-prompt-ai bg-white hover:bg-blue-50 text-blue-700 border border-blue-200 px-3 py-1 rounded-full whitespace-nowrap transition-colors flex items-center gap-1 font-medium shadow-sm">
+            📊 Ringkasan Kelas
+          </button>
+          <button class="chip-prompt-ai bg-white hover:bg-emerald-50 text-emerald-700 border border-emerald-200 px-3 py-1 rounded-full whitespace-nowrap transition-colors flex items-center gap-1 font-medium shadow-sm">
+            🏆 Pelajar Cemerlang
+          </button>
+          <button class="chip-prompt-ai bg-white hover:bg-rose-50 text-rose-700 border border-rose-200 px-3 py-1 rounded-full whitespace-nowrap transition-colors flex items-center gap-1 font-medium shadow-sm">
+            ⚠️ Soalan Paling Sukar
+          </button>
+          <button class="chip-prompt-ai bg-white hover:bg-amber-50 text-amber-700 border border-amber-200 px-3 py-1 rounded-full whitespace-nowrap transition-colors flex items-center gap-1 font-medium shadow-sm">
+            💡 Cadangan Intervensi
+          </button>
+        </div>
+
+        <!-- Chat Area -->
+        <div
+          id="terima-mesej-ai-chat"
+          class="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-50/50"
+        >
+          <!-- Welcome message -->
+          <div class="flex items-start gap-3 max-w-[85%]">
+            <div class="w-8 h-8 rounded-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white flex items-center justify-center shrink-0 text-xs font-bold shadow">
+              AI
+            </div>
+            <div class="bg-white border border-slate-100 text-slate-800 p-3.5 rounded-2xl rounded-tl-none shadow-sm text-sm leading-relaxed">
+              Salam sejahtera Cikgu! 👋 Saya Pembantu AI CikguScan.
+              <br/><br/>
+              Tanya saya apa-apa tentang data imbasan murid Cikgu, contohnya markah tertinggi, soalan paling sukar, atau cadangan penambahbaikan!
+            </div>
+          </div>
+        </div>
+
+        <!-- Input Area -->
+        <div class="p-3 bg-white border-t border-slate-100 shrink-0">
+          <form id="form-ai-chat" class="flex items-center gap-2">
+            <input
+              type="text"
+              id="input-soalan-ai-chat"
+              placeholder="Tanya soalan mengenai data imbasan..."
+              class="flex-1 px-4 py-2.5 bg-slate-100 border border-slate-200 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 text-sm"
+              autocomplete="off"
+            />
+            <button
+              type="submit"
+              id="btn-hantar-ai-chat"
+              class="w-10 h-10 rounded-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white flex items-center justify-center shrink-0 shadow-md active:scale-95 transition-all"
+            >
+              <svg class="w-5 h-5 translate-x-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+              </svg>
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

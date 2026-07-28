@@ -847,12 +847,30 @@ async function simpanAI() {
 }
 document.getElementById("btn-simpan-ai")!.addEventListener("click", simpanAI);
 
+function getDaftarApiKey(): string {
+  const storedKey = localStorage.getItem("gemini_api_key");
+  if (storedKey && storedKey.trim()) return storedKey.trim();
+  const envKey = (typeof process !== "undefined" && process.env?.GEMINI_API_KEY) || (import.meta as any).env?.VITE_GEMINI_API_KEY;
+  if (envKey && envKey.trim()) return envKey.trim();
+  return "AIzaSyAtAnovHgs1PTZxqAiKzkhDHl3Q5cs9-l8";
+}
+
+function pusatkanKamera() {
+  setTimeout(() => {
+    const tabImbas = document.getElementById("tab-imbas");
+    const cameraCard = document.querySelector("#tab-imbas .apple-card") || tabImbas;
+    if (cameraCard) {
+      cameraCard.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+  }, 150);
+}
+
 document
   .getElementById("btn-semak-api-key")
   ?.addEventListener("click", async () => {
     const input = document.getElementById("input-api-key") as HTMLInputElement;
     const apiKey =
-      input.value.trim() || "AIzaSyAtAnovHgs1PTZxqAiKzkhDHl3Q5cs9-l8";
+      input.value.trim() || getDaftarApiKey();
 
     const btn = document.getElementById(
       "btn-semak-api-key",
@@ -1665,6 +1683,7 @@ async function mulakanKamera(skipConfirm: boolean = false) {
     video.play().catch((e) => console.log(e));
     renderFrameKamera();
     setupFlashButton();
+    pusatkanKamera();
     return;
   }
 
@@ -1680,6 +1699,7 @@ async function mulakanKamera(skipConfirm: boolean = false) {
     await video.play();
     renderFrameKamera();
     setupFlashButton();
+    pusatkanKamera();
   } catch (err) {
     paparAlert(
       "Kamera Gagal",
@@ -2039,9 +2059,7 @@ async function verifikasiAI(
   ralat?: boolean;
   nama?: string;
 } | null> {
-  const apiKey =
-    localStorage.getItem("gemini_api_key") ||
-    "AIzaSyAtAnovHgs1PTZxqAiKzkhDHl3Q5cs9-l8";
+  const apiKey = getDaftarApiKey();
   if (!apiKey) return null;
 
   try {
@@ -2064,9 +2082,9 @@ Terdapat ${window.JUMLAH_SOALAN} soalan semuanya. Kertas ini mungkin mempunyai k
 - Sila ambil kira bulatan yang DILOREK SECARA TIDAK SEMPURNA (sebagai contoh, hanya lorekan kasar, sebahagian dakwat/terconteng, atau bulatan yang tidak dihitamkan sepenuhnya). Selagi ada tanda niat untuk memilih di dalam bulatan tersebut, anggap ia sebagai jawapan yang dipilih.
 - Jangan terlepas pandang lorekan atau tanda kecil di dalam bulatan.
 
-**MANDATORI OCR TULISAN TANGAN:**
-Sekiranya imej keratan nama disertakan, anda MESTI BACA DAN TEKA SEBAIK MUNGKIN tulisan tangan tersebut untuk mendapatkan nama pelajar, nombor kad pengenalan, nombor matrik, darjah/kelas, atau apa-apa maklumat bertulis di bahagian atas kertas. 
-Tuliskan maklumat tersebut ke dalam \`nama_pelajar\`. Jika tiada kesan dakwat langsung, barulah tinggalkan kosong.
+**MANDATORI OCR TULISAN TANGAN (NAMA PELAJAR SAHAJA):**
+Sekiranya imej keratan nama disertakan, anda MESTI BACA DAN TEKA SEBAIK MUNGKIN HANYA NAMA PELAJAR SAHAJA daripada tulisan tangan tersebut.
+PENTING: JANGAN SERTAKAN nama kelas, darjah, nombor kad pengenalan, nombor matrik, atau sebarang maklumat lain. Tulis NAMA PELAJAR SAHAJA ke dalam \`nama_pelajar\`. Jika tiada tulisan nama langsung, barulah tinggalkan kosong.
 
 Skema Jawapan Sebenar:
 ${skemaPrompt}
@@ -2132,7 +2150,7 @@ PENTING:
             nama_pelajar: {
               type: Type.STRING,
               description:
-                "Nama yang berjaya dibaca daripada bahagian atas kertas OMR / keratan nama. Biarkan kosong sekiranya tidak dijumpai.",
+                "HANYA NAMA PELAJAR SAHAJA yang dibaca daripada bahagian atas kertas (JANGAN SERTAKAN KELAS, DARJAH, ATAU KAD PENGENALAN). Biarkan kosong sekiranya tidak dijumpai.",
             },
           },
         },
@@ -2797,7 +2815,10 @@ document
   .addEventListener("click", () => tukarTab("analisis"));
 document
   .getElementById("btn-imbas-seterusnya-keputusan")!
-  .addEventListener("click", () => tukarTab("imbas"));
+  .addEventListener("click", () => {
+    tukarTab("imbas");
+    pusatkanKamera();
+  });
 
 function tukarSubTabAnalisis(mod: string) {
   window.modAnalisisSemasa = mod;
@@ -3937,4 +3958,178 @@ function updatePageOrientation(mode = "omr") {
   }
 }
 
-// Empty
+// LOGIK AI CHAT FLOATING ASSISTANT
+function bukaAIChat() {
+  const modal = document.getElementById("modal-ai-chat");
+  if (modal) {
+    modal.classList.remove("hidden");
+    modal.classList.add("flex");
+    setTimeout(() => {
+      document.getElementById("input-soalan-ai-chat")?.focus();
+    }, 150);
+  }
+}
+
+function tutupAIChat() {
+  const modal = document.getElementById("modal-ai-chat");
+  if (modal) {
+    modal.classList.add("hidden");
+    modal.classList.remove("flex");
+  }
+}
+
+function tambahMesejAIChat(peranan: "user" | "ai", teks: string) {
+  const container = document.getElementById("terima-mesej-ai-chat");
+  if (!container) return;
+
+  const divMesej = document.createElement("div");
+  divMesej.className = peranan === "user"
+    ? "flex items-start justify-end gap-3 max-w-[85%] ml-auto"
+    : "flex items-start gap-3 max-w-[85%]";
+
+  const formattedTeks = teks
+    .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")
+    .replace(/\n/g, "<br/>");
+
+  if (peranan === "user") {
+    divMesej.innerHTML = `
+      <div class="bg-blue-600 text-white p-3.5 rounded-2xl rounded-tr-none shadow-sm text-sm leading-relaxed">
+        ${formattedTeks}
+      </div>
+      <div class="w-8 h-8 rounded-full bg-slate-300 text-slate-700 flex items-center justify-center shrink-0 text-xs font-bold shadow">
+        Guru
+      </div>
+    `;
+  } else {
+    divMesej.innerHTML = `
+      <div class="w-8 h-8 rounded-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white flex items-center justify-center shrink-0 text-xs font-bold shadow">
+        AI
+      </div>
+      <div class="bg-white border border-slate-100 text-slate-800 p-3.5 rounded-2xl rounded-tl-none shadow-sm text-sm leading-relaxed">
+        ${formattedTeks}
+      </div>
+    `;
+  }
+
+  container.appendChild(divMesej);
+  container.scrollTop = container.scrollHeight;
+}
+
+async function hantarSoalanAIChat(soalanText: string) {
+  if (!soalanText || !soalanText.trim()) return;
+
+  const query = soalanText.trim();
+  tambahMesejAIChat("user", query);
+
+  const input = document.getElementById("input-soalan-ai-chat") as HTMLInputElement;
+  if (input) input.value = "";
+
+  const container = document.getElementById("terima-mesej-ai-chat");
+  const idLoader = "loader-ai-" + Date.now();
+  if (container) {
+    const loaderDiv = document.createElement("div");
+    loaderDiv.id = idLoader;
+    loaderDiv.className = "flex items-start gap-3 max-w-[85%]";
+    loaderDiv.innerHTML = `
+      <div class="w-8 h-8 rounded-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white flex items-center justify-center shrink-0 text-xs font-bold shadow">
+        AI
+      </div>
+      <div class="bg-white border border-slate-100 text-slate-800 p-3.5 rounded-2xl rounded-tl-none shadow-sm text-sm leading-relaxed flex items-center gap-2">
+        <svg class="animate-spin h-4 w-4 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+        </svg>
+        <span>Menganalisis data imbasan...</span>
+      </div>
+    `;
+    container.appendChild(loaderDiv);
+    container.scrollTop = container.scrollHeight;
+  }
+
+  const apiKey = getDaftarApiKey();
+  try {
+    const ai = new GoogleGenAI({ apiKey });
+
+    const records = window.senaraiRekodKelas || [];
+    let pentaksiranNama = "Pentaksiran Umum";
+    if (window.currentPentaksiranId) {
+      const pObj = (window.pentaksiranList || []).find((p: any) => p.id === window.currentPentaksiranId);
+      if (pObj) pentaksiranNama = pObj.nama;
+    }
+
+    const totalStudents = records.length;
+    let studentSummaryList = "";
+    let highestScore = 0;
+    let lowestScore = 100;
+    let totalMarks = 0;
+
+    if (totalStudents > 0) {
+      studentSummaryList = records.map((r: any, idx: number) => {
+        const mark = r.markah || 0;
+        const peratus = r.peratus || 0;
+        if (peratus > highestScore) highestScore = peratus;
+        if (peratus < lowestScore) lowestScore = peratus;
+        totalMarks += peratus;
+        return `${idx + 1}. Nama: ${r.nama || "Pelajar " + (idx + 1)} | Kelas: ${r.kelas || "-"} | Markah: ${mark}/${r.butiran?.length || window.JUMLAH_SOALAN} (${peratus}%)`;
+      }).join("\n");
+    }
+
+    const avgMark = totalStudents > 0 ? (totalMarks / totalStudents).toFixed(1) : "0";
+    if (lowestScore === 100 && totalStudents === 0) lowestScore = 0;
+
+    const systemPrompt = `Anda adalah Pembantu AI CikguScan yang cerdas dan mesra guru.
+Berikut adalah data terkini imbasan OMR kertas pelajar:
+
+nama_pentaksiran: ${pentaksiranNama}
+jumlah_pelajar_diimbas: ${totalStudents}
+purata_markah: ${avgMark}%
+markah_tertinggi: ${highestScore}%
+markah_terendah: ${lowestScore}%
+
+Senarai Imbasan Pelajar:
+${studentSummaryList || "Tiada data imbasan lagi."}
+
+Skema Jawapan (${window.JUMLAH_SOALAN || 0} soalan):
+${(window.skemaJawapan || []).map((j: string, i: number) => `S${i + 1}:${j}`).join(", ")}
+
+Tugas anda: Jawab soalan guru berikut dengan tepat, padat, dan berguna berdasarkan data imbasan di atas.
+Gunakan Bahasa Melayu yang sopan, mesra, dan berikan format tulisan yang kemas (gunakan **huruf tebal** untuk penekanan). Sekiranya tiada data, jelaskan dengan lembut bahawa guru perlu mengimbas kertas OMR terlebih dahulu.`;
+
+    const response = await ai.models.generateContent({
+      model: "gemini-2.5-flash",
+      contents: [
+        { role: "user", parts: [{ text: systemPrompt + "\n\nSoalan Guru: " + query }] }
+      ]
+    });
+
+    const loaderEl = document.getElementById(idLoader);
+    if (loaderEl) loaderEl.remove();
+
+    const replyText = response.text || "Maaf Cikgu, AI tidak melepaskan respons. Sila cuba lagi.";
+    tambahMesejAIChat("ai", replyText);
+
+  } catch (err: any) {
+    const loaderEl = document.getElementById(idLoader);
+    if (loaderEl) loaderEl.remove();
+    tambahMesejAIChat("ai", "Ralat berhubung dengan AI: " + (err.message || err));
+  }
+}
+
+// Inisialisasi AI Chat Listener
+document.addEventListener("DOMContentLoaded", () => {
+  document.getElementById("btn-floating-ai")?.addEventListener("click", bukaAIChat);
+  document.getElementById("btn-tutup-ai-chat")?.addEventListener("click", tutupAIChat);
+  document.getElementById("form-ai-chat")?.addEventListener("submit", (e) => {
+    e.preventDefault();
+    const input = document.getElementById("input-soalan-ai-chat") as HTMLInputElement;
+    if (input) hantarSoalanAIChat(input.value);
+  });
+
+  document.querySelectorAll(".chip-prompt-ai").forEach((chip) => {
+    chip.addEventListener("click", () => {
+      const text = chip.textContent?.trim().replace(/^[^\w\s]+/, "").trim() || "";
+      hantarSoalanAIChat(text);
+    });
+  });
+});
+
