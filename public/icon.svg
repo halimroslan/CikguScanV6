@@ -2,16 +2,18 @@
     <!-- Background (Full square to prevent iOS white borders, border-radius applied by OS) -->
     <rect width="512" height="512" fill="#f0f5ff" />
     
-    <!-- Center Scanner Icon -->
-    <rect x="210" y="180" width="92" height="152" rx="32" fill="#c4d8fa" />
-    <path d="M 224 160 L 180 160 Q 150 160 150 190 L 150 224" stroke="#0062FF" stroke-width="32" stroke-linecap="round" fill="none" />
-    <path d="M 288 160 L 332 160 Q 362 160 362 190 L 362 224" stroke="#0062FF" stroke-width="32" stroke-linecap="round" fill="none" />
-    <path d="M 224 352 L 180 352 Q 150 352 150 322 L 150 288" stroke="#0062FF" stroke-width="32" stroke-linecap="round" fill="none" />
-    <path d="M 288 352 L 332 352 Q 362 352 362 322 L 362 288" stroke="#0062FF" stroke-width="32" stroke-linecap="round" fill="none" />
-    <path d="M 130 256 L 382 256" stroke="#0062FF" stroke-width="32" stroke-linecap="round" />
+    <!-- Center Scanner Icon (Scaled up by 1.35 for better visibility) -->
+    <g transform="translate(256, 256) scale(1.35) translate(-256, -256)">
+        <rect x="210" y="180" width="92" height="152" rx="32" fill="#c4d8fa" />
+        <path d="M 224 160 L 180 160 Q 150 160 150 190 L 150 224" stroke="#0062FF" stroke-width="32" stroke-linecap="round" fill="none" />
+        <path d="M 288 160 L 332 160 Q 362 160 362 190 L 362 224" stroke="#0062FF" stroke-width="32" stroke-linecap="round" fill="none" />
+        <path d="M 224 352 L 180 352 Q 150 352 150 322 L 150 288" stroke="#0062FF" stroke-width="32" stroke-linecap="round" fill="none" />
+        <path d="M 288 352 L 332 352 Q 362 352 362 322 L 362 288" stroke="#0062FF" stroke-width="32" stroke-linecap="round" fill="none" />
+        <path d="M 130 256 L 382 256" stroke="#0062FF" stroke-width="32" stroke-linecap="round" />
+    </g>
 
-    <!-- AI Spark Symbol -->
-    <g transform="translate(360, 60) scale(4)">
+    <!-- AI Spark Symbol (Enlarged and positioned to fit perfectly) -->
+    <g transform="translate(380, 40) scale(4.5)">
       <defs>
         <mask id="cut-corner-icon">
           <rect x="0" y="0" width="24" height="24" fill="white" />

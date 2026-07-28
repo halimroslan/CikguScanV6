@@ -2,19 +2,18 @@
 <html>
 <body style="background: #333; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0;">
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" style="width: 256px; height: 256px; border-radius: 20%; overflow: hidden;">
-    <!-- Background (Full square to prevent iOS white borders, border-radius applied in CSS/iOS automatically) -->
     <rect width="512" height="512" fill="#f0f5ff" />
     
-    <!-- Center Scanner Icon -->
-    <rect x="210" y="180" width="92" height="152" rx="32" fill="#c4d8fa" />
-    <path d="M 224 160 L 180 160 Q 150 160 150 190 L 150 224" stroke="#0062FF" stroke-width="32" stroke-linecap="round" fill="none" />
-    <path d="M 288 160 L 332 160 Q 362 160 362 190 L 362 224" stroke="#0062FF" stroke-width="32" stroke-linecap="round" fill="none" />
-    <path d="M 224 352 L 180 352 Q 150 352 150 322 L 150 288" stroke="#0062FF" stroke-width="32" stroke-linecap="round" fill="none" />
-    <path d="M 288 352 L 332 352 Q 362 352 362 322 L 362 288" stroke="#0062FF" stroke-width="32" stroke-linecap="round" fill="none" />
-    <path d="M 130 256 L 382 256" stroke="#0062FF" stroke-width="32" stroke-linecap="round" />
+    <g transform="translate(256, 256) scale(1.35) translate(-256, -256)">
+        <rect x="210" y="180" width="92" height="152" rx="32" fill="#c4d8fa" />
+        <path d="M 224 160 L 180 160 Q 150 160 150 190 L 150 224" stroke="#0062FF" stroke-width="32" stroke-linecap="round" fill="none" />
+        <path d="M 288 160 L 332 160 Q 362 160 362 190 L 362 224" stroke="#0062FF" stroke-width="32" stroke-linecap="round" fill="none" />
+        <path d="M 224 352 L 180 352 Q 150 352 150 322 L 150 288" stroke="#0062FF" stroke-width="32" stroke-linecap="round" fill="none" />
+        <path d="M 288 352 L 332 352 Q 362 352 362 322 L 362 288" stroke="#0062FF" stroke-width="32" stroke-linecap="round" fill="none" />
+        <path d="M 130 256 L 382 256" stroke="#0062FF" stroke-width="32" stroke-linecap="round" />
+    </g>
 
-    <!-- AI Spark Symbol -->
-    <g transform="translate(320, 90) scale(5.5)">
+    <g transform="translate(370, 50) scale(4.8)">
       <defs>
         <mask id="cut-corner-icon">
           <rect x="0" y="0" width="24" height="24" fill="white" />
