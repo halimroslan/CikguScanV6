@@ -4155,6 +4155,197 @@ function updatePageOrientation(mode = "omr") {
   }
 }
 
+// INTERACTIVE CHART WIDGET GENERATOR FOR AI CHAT
+(window as any).chartStore = {};
+
+function processChartBlocks(teks: string): string {
+  const chartRegex = /```(?:chart|json)?\s*([\s\S]*?)\s*```/g;
+  return teks.replace(chartRegex, (match, jsonString) => {
+    try {
+      const cleanJson = jsonString.trim();
+      if (!cleanJson.startsWith("{") || !cleanJson.includes("labels")) {
+        return match; // Return original if not valid chart JSON
+      }
+      const parsed = JSON.parse(cleanJson);
+      const chartId = "chart-" + Math.random().toString(36).substring(2, 9);
+      
+      const labels = parsed.labels || [];
+      const data = parsed.data || [];
+      const title = parsed.title || "Carta Analisis Prestasi";
+      const type = parsed.type || "bar";
+
+      (window as any).chartStore[chartId] = { labels, data, title, type };
+
+      setTimeout(() => {
+        if ((window as any).renderChartSVG) {
+          (window as any).renderChartSVG(chartId, type);
+        }
+      }, 60);
+
+      return `
+        <div id="${chartId}-container" class="my-3 p-3 bg-slate-900 text-white rounded-2xl shadow-lg border border-slate-800 font-sans overflow-hidden">
+          <div class="flex items-center justify-between mb-3 border-b border-slate-800 pb-2">
+            <span class="font-bold text-xs text-blue-400 flex items-center gap-1.5">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
+              ${title}
+            </span>
+            <div class="flex bg-slate-800 p-0.5 rounded-lg text-[10px] font-semibold gap-1">
+              <button type="button" onclick="window.tukarTipeCarta('${chartId}', 'bar')" class="chart-tab-${chartId}-bar px-2 py-0.5 rounded-md transition-all ${type === 'bar' ? 'bg-blue-600 text-white font-bold' : 'text-slate-400 hover:text-white'}">Bar</button>
+              <button type="button" onclick="window.tukarTipeCarta('${chartId}', 'line')" class="chart-tab-${chartId}-line px-2 py-0.5 rounded-md transition-all ${type === 'line' ? 'bg-blue-600 text-white font-bold' : 'text-slate-400 hover:text-white'}">Line</button>
+              <button type="button" onclick="window.tukarTipeCarta('${chartId}', 'dotted')" class="chart-tab-${chartId}-dotted px-2 py-0.5 rounded-md transition-all ${type === 'dotted' ? 'bg-blue-600 text-white font-bold' : 'text-slate-400 hover:text-white'}">Dotted</button>
+            </div>
+          </div>
+
+          <div id="${chartId}-svg-wrap" class="w-full h-44 relative flex items-center justify-center min-h-[160px]">
+            <span class="text-xs text-slate-500">Memuatkan carta...</span>
+          </div>
+
+          <div id="${chartId}-tooltip" class="mt-2 text-center text-xs font-medium text-sky-300 min-h-[20px] bg-slate-950/60 p-1.5 rounded-xl border border-slate-800">
+            👆 Klik mana-mana bar atau titik pada carta untuk melihat butiran
+          </div>
+        </div>
+      `;
+    } catch (e) {
+      return match;
+    }
+  });
+}
+
+(window as any).renderChartSVG = function(chartId: string, type: 'bar' | 'line' | 'dotted') {
+  const store = (window as any).chartStore[chartId];
+  if (!store) return;
+
+  const { labels, data } = store;
+  const wrap = document.getElementById(`${chartId}-svg-wrap`);
+  if (!wrap) return;
+
+  // Update tab buttons styling
+  ['bar', 'line', 'dotted'].forEach(t => {
+    const btn = document.querySelector(`.chart-tab-${chartId}-${t}`);
+    if (btn) {
+      if (t === type) {
+        btn.className = `chart-tab-${chartId}-${t} px-2 py-0.5 rounded-md transition-all bg-blue-600 text-white font-bold`;
+      } else {
+        btn.className = `chart-tab-${chartId}-${t} px-2 py-0.5 rounded-md transition-all text-slate-400 hover:text-white`;
+      }
+    }
+  });
+
+  const svgW = 340;
+  const svgH = 160;
+  const padL = 32;
+  const padR = 16;
+  const padT = 18;
+  const padB = 28;
+
+  const chartW = svgW - padL - padR;
+  const chartH = svgH - padT - padB;
+
+  const numVals = data.map((v: any) => Number(v) || 0);
+  const maxVal = Math.max(100, ...numVals, 10);
+  const n = labels.length;
+
+  if (n === 0) {
+    wrap.innerHTML = `<div class="text-slate-500 text-xs">Tiada data untuk dipaparkan</div>`;
+    return;
+  }
+
+  let svgContent = `<svg viewBox="0 0 ${svgW} ${svgH}" class="w-full h-full overflow-visible">
+    <defs>
+      <linearGradient id="barGrad-${chartId}" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="#3b82f6" />
+        <stop offset="100%" stop-color="#1d4ed8" />
+      </linearGradient>
+      <linearGradient id="lineGrad-${chartId}" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="#38bdf8" stop-opacity="0.35" />
+        <stop offset="100%" stop-color="#38bdf8" stop-opacity="0.0" />
+      </linearGradient>
+    </defs>
+    
+    <!-- Y Gridlines -->
+    <line x1="${padL}" y1="${padT}" x2="${svgW - padR}" y2="${padT}" stroke="#334155" stroke-dasharray="2,2"/>
+    <text x="${padL - 4}" y="${padT + 3}" fill="#64748b" font-size="8" text-anchor="end">${maxVal}%</text>
+    
+    <line x1="${padL}" y1="${padT + chartH / 2}" x2="${svgW - padR}" y2="${padT + chartH / 2}" stroke="#334155" stroke-dasharray="2,2"/>
+    <text x="${padL - 4}" y="${padT + chartH / 2 + 3}" fill="#64748b" font-size="8" text-anchor="end">${Math.round(maxVal / 2)}%</text>
+
+    <line x1="${padL}" y1="${padT + chartH}" x2="${svgW - padR}" y2="${padT + chartH}" stroke="#475569" stroke-width="1"/>
+    <text x="${padL - 4}" y="${padT + chartH + 3}" fill="#64748b" font-size="8" text-anchor="end">0%</text>
+  `;
+
+  const stepX = n > 1 ? chartW / (n - 1) : chartW / 2;
+
+  if (type === "bar") {
+    const slotW = chartW / n;
+    const barW = Math.max(8, Math.min(22, slotW * 0.6));
+    labels.forEach((lbl: string, i: number) => {
+      const val = numVals[i];
+      const h = Math.max(2, (val / maxVal) * chartH);
+      const x = padL + i * slotW + (slotW - barW) / 2;
+      const y = padT + chartH - h;
+      const shortLbl = lbl.length > 6 ? lbl.substring(0, 5) + "…" : lbl;
+      const safeLbl = String(lbl).replace(/'/g, "\\'");
+
+      svgContent += `
+        <g class="cursor-pointer group" onclick="window.klikDataCarta('${chartId}', '${safeLbl}', ${val})">
+          <rect x="${x}" y="${y}" width="${barW}" height="${h}" rx="3" fill="url(#barGrad-${chartId})" class="transition-all duration-200 hover:fill-amber-400"/>
+          <text x="${x + barW / 2}" y="${padT + chartH + 12}" fill="#94a3b8" font-size="8" text-anchor="middle">${shortLbl}</text>
+          <text x="${x + barW / 2}" y="${y - 4}" fill="#38bdf8" font-size="7" font-weight="bold" text-anchor="middle" class="opacity-0 group-hover:opacity-100 transition-opacity">${val}%</text>
+        </g>
+      `;
+    });
+  } else if (type === "line" || type === "dotted") {
+    const points: { x: number; y: number; val: number; lbl: string }[] = [];
+    labels.forEach((lbl: string, i: number) => {
+      const val = numVals[i];
+      const x = n === 1 ? padL + chartW / 2 : padL + i * stepX;
+      const y = padT + chartH - ((val / maxVal) * chartH);
+      points.push({ x, y, val, lbl });
+    });
+
+    let pathD = `M ${points[0].x} ${points[0].y}`;
+    for (let i = 1; i < points.length; i++) {
+      pathD += ` L ${points[i].x} ${points[i].y}`;
+    }
+
+    if (type === "line") {
+      const areaD = pathD + ` L ${points[points.length - 1].x} ${padT + chartH} L ${points[0].x} ${padT + chartH} Z`;
+      svgContent += `<path d="${areaD}" fill="url(#lineGrad-${chartId})"/>`;
+      svgContent += `<path d="${pathD}" stroke="#38bdf8" stroke-width="2.5" fill="none"/>`;
+    } else {
+      svgContent += `<path d="${pathD}" stroke="#a855f7" stroke-width="2.5" stroke-dasharray="5,4" fill="none"/>`;
+    }
+
+    points.forEach((pt) => {
+      const shortLbl = pt.lbl.length > 6 ? pt.lbl.substring(0, 5) + "…" : pt.lbl;
+      const color = type === "line" ? "#38bdf8" : "#a855f7";
+      const safeLbl = String(pt.lbl).replace(/'/g, "\\'");
+
+      svgContent += `
+        <g class="cursor-pointer group" onclick="window.klikDataCarta('${chartId}', '${safeLbl}', ${pt.val})">
+          <circle cx="${pt.x}" cy="${pt.y}" r="4.5" fill="${color}" stroke="#0f172a" stroke-width="2" class="transition-transform group-hover:scale-150"/>
+          <text x="${pt.x}" y="${padT + chartH + 12}" fill="#94a3b8" font-size="8" text-anchor="middle">${shortLbl}</text>
+        </g>
+      `;
+    });
+  }
+
+  svgContent += `</svg>`;
+  wrap.innerHTML = svgContent;
+};
+
+(window as any).tukarTipeCarta = function(chartId: string, type: 'bar' | 'line' | 'dotted') {
+  (window as any).renderChartSVG(chartId, type);
+};
+
+(window as any).klikDataCarta = function(chartId: string, label: string, val: number) {
+  const tooltip = document.getElementById(`${chartId}-tooltip`);
+  if (tooltip) {
+    const status = val >= 40 ? "✅ LULUS" : "❌ GAGAL";
+    tooltip.innerHTML = `📌 <span class="font-bold text-white">${label}</span>: <span class="text-amber-400 font-extrabold text-sm">${val}%</span> (${status})`;
+  }
+};
+
 // LOGIK AI CHAT FLOATING ASSISTANT
 function bukaAIChat() {
   const modal = document.getElementById("modal-ai-chat");
@@ -4182,11 +4373,16 @@ function tambahMesejAIChat(peranan: "user" | "ai", teks: string) {
   const divMesej = document.createElement("div");
   divMesej.className = peranan === "user"
     ? "flex items-start justify-end gap-3 max-w-[85%] ml-auto"
-    : "flex items-start gap-3 max-w-[85%]";
+    : "flex items-start gap-3 max-w-[92%]";
 
-  const formattedTeks = teks
-    .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")
-    .replace(/\n/g, "<br/>");
+  let formattedTeks = teks
+    .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>");
+
+  if (peranan === "ai") {
+    formattedTeks = processChartBlocks(formattedTeks);
+  }
+
+  formattedTeks = formattedTeks.replace(/\n/g, "<br/>");
 
   if (peranan === "user") {
     divMesej.innerHTML = `
@@ -4202,7 +4398,7 @@ function tambahMesejAIChat(peranan: "user" | "ai", teks: string) {
       <div class="w-8 h-8 rounded-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white flex items-center justify-center shrink-0 text-xs font-bold shadow">
         AI
       </div>
-      <div class="bg-white border border-slate-100 text-slate-800 p-3.5 rounded-2xl rounded-tl-none shadow-sm text-sm leading-relaxed">
+      <div class="bg-white border border-slate-100 text-slate-800 p-3.5 rounded-2xl rounded-tl-none shadow-sm text-sm leading-relaxed w-full">
         ${formattedTeks}
       </div>
     `;
@@ -4289,8 +4485,22 @@ ${studentSummaryList || "Tiada data imbasan lagi."}
 Skema Jawapan (${window.JUMLAH_SOALAN || 0} soalan):
 ${(window.skemaJawapan || []).map((j: string, i: number) => `S${i + 1}:${j}`).join(", ")}
 
-Tugas anda: Jawab soalan guru berikut dengan tepat, padat, dan berguna berdasarkan data imbasan di atas.
-Gunakan Bahasa Melayu yang sopan, mesra, dan berikan format tulisan yang kemas (gunakan **huruf tebal** untuk penekanan). Sekiranya tiada data, jelaskan dengan lembut bahawa guru perlu mengimbas kertas OMR terlebih dahulu.`;    const response = await generateContentPintar(apiKey, {
+Gaya & Format Respons:
+- Gunakan Bahasa Melayu yang sopan, mesra, dan berikan format tulisan yang kemas.
+- Gunakan **huruf tebal** untuk penekanan.
+- PENTING (MENJANA CARTA INTERAKTIF): Apabila guru meminta carta, graf, taburan markah, trend, perbandingan atau analisis visual, ANDA WAJIB MENJANA CARTA INTERAKTIF dengan memasukkan blok JSON berikut dalam respons anda:
+
+\`\`\`chart
+{
+  "type": "bar",
+  "title": "Tajuk Carta Prestasi",
+  "labels": ["Ahmad", "Siti", "Tan", ...],
+  "data": [85, 90, 75, ...]
+}
+\`\`\`
+(Gunakan "type": "bar", "line", atau "dotted"). Sekiranya tiada data imbasan lagi, jana carta contoh atau beritahu guru secara mesra.`;
+
+    const response = await generateContentPintar(apiKey, {
       contents: [
         { role: "user", parts: [{ text: systemPrompt + "\n\nSoalan Guru: " + query }] }
       ]
@@ -4328,16 +4538,17 @@ Gunakan Bahasa Melayu yang sopan, mesra, dan berikan format tulisan yang kemas (
 document.addEventListener("DOMContentLoaded", () => {
   document.getElementById("btn-floating-ai")?.addEventListener("click", bukaAIChat);
   document.getElementById("btn-tutup-ai-chat")?.addEventListener("click", tutupAIChat);
+  
   document.getElementById("form-ai-chat")?.addEventListener("submit", (e) => {
     e.preventDefault();
     const input = document.getElementById("input-soalan-ai-chat") as HTMLInputElement;
     if (input) hantarSoalanAIChat(input.value);
   });
 
-  document.querySelectorAll(".chip-prompt-ai").forEach((chip) => {
-    chip.addEventListener("click", () => {
-      const text = chip.textContent?.trim().replace(/^[^\w\s]+/, "").trim() || "";
-      hantarSoalanAIChat(text);
+  document.querySelectorAll(".chip-prompt-ai").forEach((btn) => {
+    btn.addEventListener("click", (e: any) => {
+      const promptText = e.currentTarget.innerText.trim();
+      hantarSoalanAIChat(promptText);
     });
   });
 });
