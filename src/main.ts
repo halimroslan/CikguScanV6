@@ -859,8 +859,7 @@ async function generateContentPintar(apiKey: string, reqConfig: any): Promise<an
   const modelsToTry = [
     "gemini-2.5-flash",
     "gemini-2.0-flash",
-    "gemini-1.5-flash",
-    "gemini-1.5-flash-8b"
+    "gemini-1.5-flash"
   ];
   const ai = new GoogleGenAI({ apiKey });
   let lastErr: any = null;
@@ -874,17 +873,8 @@ async function generateContentPintar(apiKey: string, reqConfig: any): Promise<an
       return response;
     } catch (err: any) {
       lastErr = err;
-      const strErr = String(err?.message || err || "");
-      if (
-        strErr.includes("429") ||
-        strErr.includes("RESOURCE_EXHAUSTED") ||
-        strErr.includes("Quota exceeded") ||
-        strErr.includes("not found")
-      ) {
-        console.warn(`Model ${modelName} terhad, mencuba model seterusnya...`);
-        continue;
-      }
-      throw err;
+      console.warn(`Model ${modelName} gagal, mencuba model seterusnya...`, err?.message || err);
+      continue;
     }
   }
 
@@ -4143,8 +4133,17 @@ Gunakan Bahasa Melayu yang sopan, mesra, dan berikan format tulisan yang kemas (
     if (loaderEl) loaderEl.remove();
 
     const strErr = String(err?.message || err || "");
-    if (strErr.includes("429") || strErr.includes("RESOURCE_EXHAUSTED") || strErr.includes("Quota exceeded")) {
-      tambahMesejAIChat("ai", "⚠️ **Had Penggunaan AI Percuma Dicapai (Rate Limit)**\n\nKadar penggunaan AI percuma telah mencapai had sementara oleh Google. Sila tunggu kira-kira **30 saat** dan cuba lagi, atau masukkan **API Key Gemini** anda sendiri pada ikon **Tetapan AI** di bahagian atas skrin untuk akses lancar tanpa sebarang had.");
+    if (
+      strErr.includes("429") ||
+      strErr.includes("RESOURCE_EXHAUSTED") ||
+      strErr.includes("Quota exceeded") ||
+      strErr.includes("404") ||
+      strErr.includes("NOT_FOUND")
+    ) {
+      tambahMesejAIChat(
+        "ai",
+        "⚠️ **Had Penggunaan AI Percuma Dicapai**\n\nKadar penggunaan AI percuma telah mencapai had sementara oleh Google. Sila tunggu kira-kira **30 saat** dan cuba lagi, atau masukkan **API Key Gemini** anda sendiri pada ikon **Tetapan AI** di bahagian atas skrin untuk akses lancar tanpa sebarang had."
+      );
     } else {
       tambahMesejAIChat("ai", "Ralat berhubung dengan AI: " + (err.message || err));
     }
