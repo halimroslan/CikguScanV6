@@ -855,6 +855,42 @@ function getDaftarApiKey(): string {
   return "AIzaSyAtAnovHgs1PTZxqAiKzkhDHl3Q5cs9-l8";
 }
 
+async function generateContentPintar(apiKey: string, reqConfig: any): Promise<any> {
+  const modelsToTry = [
+    "gemini-2.5-flash",
+    "gemini-2.0-flash",
+    "gemini-1.5-flash",
+    "gemini-1.5-flash-8b"
+  ];
+  const ai = new GoogleGenAI({ apiKey });
+  let lastErr: any = null;
+
+  for (const modelName of modelsToTry) {
+    try {
+      const response = await ai.models.generateContent({
+        model: modelName,
+        ...reqConfig
+      });
+      return response;
+    } catch (err: any) {
+      lastErr = err;
+      const strErr = String(err?.message || err || "");
+      if (
+        strErr.includes("429") ||
+        strErr.includes("RESOURCE_EXHAUSTED") ||
+        strErr.includes("Quota exceeded") ||
+        strErr.includes("not found")
+      ) {
+        console.warn(`Model ${modelName} terhad, mencuba model seterusnya...`);
+        continue;
+      }
+      throw err;
+    }
+  }
+
+  throw lastErr;
+}
+
 function pusatkanKamera() {
   setTimeout(() => {
     const tabImbas = document.getElementById("tab-imbas");
@@ -880,9 +916,7 @@ document
     btn.disabled = true;
 
     try {
-      const ai = new GoogleGenAI({ apiKey });
-      await ai.models.generateContent({
-        model: "gemini-2.5-flash",
+      await generateContentPintar(apiKey, {
         contents: ["Say hello"],
       });
       paparAlert(
@@ -2117,8 +2151,7 @@ PENTING:
 
     contentsConfig.push(prompt);
 
-    const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
+    const response = await generateContentPintar(apiKey, {
       contents: contentsConfig,
       config: {
         responseMimeType: "application/json",
@@ -4093,10 +4126,7 @@ Skema Jawapan (${window.JUMLAH_SOALAN || 0} soalan):
 ${(window.skemaJawapan || []).map((j: string, i: number) => `S${i + 1}:${j}`).join(", ")}
 
 Tugas anda: Jawab soalan guru berikut dengan tepat, padat, dan berguna berdasarkan data imbasan di atas.
-Gunakan Bahasa Melayu yang sopan, mesra, dan berikan format tulisan yang kemas (gunakan **huruf tebal** untuk penekanan). Sekiranya tiada data, jelaskan dengan lembut bahawa guru perlu mengimbas kertas OMR terlebih dahulu.`;
-
-    const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
+Gunakan Bahasa Melayu yang sopan, mesra, dan berikan format tulisan yang kemas (gunakan **huruf tebal** untuk penekanan). Sekiranya tiada data, jelaskan dengan lembut bahawa guru perlu mengimbas kertas OMR terlebih dahulu.`;    const response = await generateContentPintar(apiKey, {
       contents: [
         { role: "user", parts: [{ text: systemPrompt + "\n\nSoalan Guru: " + query }] }
       ]
@@ -4111,7 +4141,13 @@ Gunakan Bahasa Melayu yang sopan, mesra, dan berikan format tulisan yang kemas (
   } catch (err: any) {
     const loaderEl = document.getElementById(idLoader);
     if (loaderEl) loaderEl.remove();
-    tambahMesejAIChat("ai", "Ralat berhubung dengan AI: " + (err.message || err));
+
+    const strErr = String(err?.message || err || "");
+    if (strErr.includes("429") || strErr.includes("RESOURCE_EXHAUSTED") || strErr.includes("Quota exceeded")) {
+      tambahMesejAIChat("ai", "⚠️ **Had Penggunaan AI Percuma Dicapai (Rate Limit)**\n\nKadar penggunaan AI percuma telah mencapai had sementara oleh Google. Sila tunggu kira-kira **30 saat** dan cuba lagi, atau masukkan **API Key Gemini** anda sendiri pada ikon **Tetapan AI** di bahagian atas skrin untuk akses lancar tanpa sebarang had.");
+    } else {
+      tambahMesejAIChat("ai", "Ralat berhubung dengan AI: " + (err.message || err));
+    }
   }
 }
 
