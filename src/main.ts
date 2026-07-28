@@ -640,6 +640,71 @@ document
   .getElementById("btn-confirm-batal")!
   .addEventListener("click", tutupConfirm);
 
+// IndexedDB Storage Helper for caching full OMR images locally (survives refresh until user clears cache)
+const IDB_NAME = "CikguScanImageCache";
+const IDB_STORE = "omr_scans";
+
+function openImageDB(): Promise<IDBDatabase> {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(IDB_NAME, 1);
+    req.onupgradeneeded = (e: any) => {
+      const db = e.target.result;
+      if (!db.objectStoreNames.contains(IDB_STORE)) {
+        db.createObjectStore(IDB_STORE);
+      }
+    };
+    req.onsuccess = (e: any) => resolve(e.target.result);
+    req.onerror = (e: any) => reject(e.target.error);
+  });
+}
+
+async function simpanImejKeCache(id: string, imejPenuh?: string, imejNama?: string) {
+  if (!id) return;
+  try {
+    const db = await openImageDB();
+    const tx = db.transaction(IDB_STORE, "readwrite");
+    const store = tx.objectStore(IDB_STORE);
+    store.put({ imejPenuh, imejNama }, id);
+  } catch (e) {
+    console.warn("Could not save scan image to IndexedDB", e);
+  }
+}
+
+async function ambilImejDariCache(id: string): Promise<{ imejPenuh?: string; imejNama?: string } | null> {
+  if (!id) return null;
+  try {
+    const db = await openImageDB();
+    return new Promise((resolve) => {
+      const tx = db.transaction(IDB_STORE, "readonly");
+      const store = tx.objectStore(IDB_STORE);
+      const req = store.get(id);
+      req.onsuccess = () => resolve(req.result || null);
+      req.onerror = () => resolve(null);
+    });
+  } catch (e) {
+    return null;
+  }
+}
+
+async function padamImejDariCache(id: string) {
+  if (!id) return;
+  try {
+    const db = await openImageDB();
+    const tx = db.transaction(IDB_STORE, "readwrite");
+    const store = tx.objectStore(IDB_STORE);
+    store.delete(id);
+  } catch (e) {}
+}
+
+async function padamSemuaImejDariCache() {
+  try {
+    const db = await openImageDB();
+    const tx = db.transaction(IDB_STORE, "readwrite");
+    const store = tx.objectStore(IDB_STORE);
+    store.clear();
+  } catch (e) {}
+}
+
 async function muatRekodLokal() {
   let data = localStorage.getItem(
     "cikguscan_rekod_kelas_" + window.currentUser,
@@ -668,6 +733,19 @@ async function muatRekodLokal() {
       }
     } catch (err) {
       console.error("Error loading cloud records", err);
+    }
+  }
+
+  // Hydrate full OMR images & cropped name images from IndexedDB cache
+  for (let rekod of window.senaraiRekodKelas) {
+    if (!rekod.imejPenuh || !rekod.imejNama) {
+      try {
+        const cached = await ambilImejDariCache(rekod.id);
+        if (cached) {
+          if (!rekod.imejPenuh && cached.imejPenuh) rekod.imejPenuh = cached.imejPenuh;
+          if (!rekod.imejNama && cached.imejNama) rekod.imejNama = cached.imejNama;
+        }
+      } catch (e) {}
     }
   }
 }
@@ -713,10 +791,35 @@ async function deleteRekodDariCloud(id: string) {
 }
 
 function simpanRekodLokal() {
-  localStorage.setItem(
-    "cikguscan_rekod_kelas_" + window.currentUser,
-    JSON.stringify(window.senaraiRekodKelas),
-  );
+  // Store all images into IndexedDB persistent cache
+  for (let r of window.senaraiRekodKelas) {
+    if (r.id && (r.imejPenuh || r.imejNama)) {
+      simpanImejKeCache(r.id, r.imejPenuh, r.imejNama);
+    }
+  }
+
+  try {
+    localStorage.setItem(
+      "cikguscan_rekod_kelas_" + window.currentUser,
+      JSON.stringify(window.senaraiRekodKelas),
+    );
+  } catch (err) {
+    // If localStorage quota exceeded due to large base64 images, save without imejPenuh in localStorage
+    // (images remain safely stored in IndexedDB cache)
+    const lightweightRecords = window.senaraiRekodKelas.map((r: any) => {
+      const copy = { ...r };
+      delete copy.imejPenuh;
+      return copy;
+    });
+    try {
+      localStorage.setItem(
+        "cikguscan_rekod_kelas_" + window.currentUser,
+        JSON.stringify(lightweightRecords),
+      );
+    } catch (e) {
+      console.error("localStorage save error:", e);
+    }
+  }
   kemaskiniBadgeAnalisis();
 }
 
@@ -728,6 +831,7 @@ function mintaSahkanPadamSemua() {
       let currentIds = window.senaraiRekodKelas.map((r:any) => r.id);
       window.senaraiRekodKelas = [];
       simpanRekodLokal();
+      padamSemuaImejDariCache();
       paparAnalisisUI();
       currentIds.forEach((id: string) => deleteRekodDariCloud(id));
     },
@@ -747,6 +851,7 @@ document
         (r: any) => r.id !== id,
       );
       simpanRekodLokal();
+      padamImejDariCache(id);
       paparAnalisisUI();
       deleteRekodDariCloud(id);
     },
@@ -764,6 +869,7 @@ function mintaSahkanPadamSemasa() {
           (r: any) => r.id !== window.idRekodSemasa,
         );
         simpanRekodLokal();
+        if (deletedId) padamImejDariCache(deletedId);
         window.idRekodSemasa = null;
         tukarTab("imbas");
         if (deletedId) deleteRekodDariCloud(deletedId);
