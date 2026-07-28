@@ -2373,20 +2373,37 @@ function analisisImej(sumberCanvas: HTMLCanvasElement) {
     let diff1 = avgPaper - sortedBright[0];
     let diff2 = avgPaper - sortedBright[1];
 
-    let dynamicThreshold = Math.max(CONFIG_IMBASAN.ambangKosong, avgPaper * 0.12);
+    // Kaedah 1: Triangulasi Multi-Thresholding
+    let ambangRendah = Math.max(CONFIG_IMBASAN.ambangKosong, avgPaper * 0.08);
+    let ambangSederhana = Math.max(CONFIG_IMBASAN.ambangKosong, avgPaper * 0.12);
+    let ambangTinggi = Math.max(CONFIG_IMBASAN.ambangKosong, avgPaper * 0.18);
 
-    if (diff1 > dynamicThreshold) {
+    // Semakan awal menggunakan ambang sederhana (normal)
+    if (diff1 > ambangSederhana) {
       let indeksJawapan = tahapKegelapan.indexOf(sortedBright[0]);
       pilihanPelajar = window.PILIHAN[indeksJawapan];
 
-      // Semakan 'Double Mark' (BATAL) vs 'Padaman Tak Bersih'
-      if (diff2 > dynamicThreshold) {
-        if (
-          sortedBright[1] - sortedBright[0] <
-          CONFIG_IMBASAN.pemaafSisaPadaman
-        ) {
+      // Kaedah 3: Logik Semakan Kesan Padam (Erasure Detection)
+      // Jika pilihan kedua juga gelap melepasi ambang rendah, ia berpotensi 'Double Mark' atau Kesan Padam
+      if (diff2 > ambangRendah) {
+        // Kira peratusan perbezaan kehitaman antara tandaan pertama dan kedua
+        let bezaPeratus = ((diff1 - diff2) / diff1) * 100;
+
+        if (bezaPeratus < 20) {
+          // Perbezaan kehitaman sangat kecil (<20%), bermaksud pelajar menanda 2 jawapan dengan jelas
           pilihanPelajar = "BATAL";
+        } else if (bezaPeratus >= 20 && bezaPeratus < 45) {
+          // Zon Kelabu: Perbezaan sederhana (20% - 45%). 
+          // Triangulasi dengan Ambang Tinggi untuk buat pengesahan akhir
+          if (diff1 > ambangTinggi && diff2 < ambangTinggi) {
+            // Jawapan 1 sangat gelap (sah), Jawapan 2 gagal lepas ambang tinggi (kesan padam)
+            // pilihanPelajar kekal pada jawapan pertama
+          } else {
+            // Kedua-duanya terlalu gelap atau tidak jelas
+            pilihanPelajar = "BATAL";
+          }
         }
+        // Jika bezaPeratus >= 45%, kita 100% yakin pilihan kedua cuma sisa pemadam getah (abaikan diff2)
       }
     }
 
@@ -2412,7 +2429,7 @@ function analisisImej(sumberCanvas: HTMLCanvasElement) {
         ctxDebug.fill();
       } else if (
         pilihanPelajar === "BATAL" &&
-        avgPaper - tahapKegelapan[j] > dynamicThreshold
+        avgPaper - tahapKegelapan[j] > ambangSederhana
       ) {
         ctxDebug.fillStyle = "rgba(251, 146, 60, 0.6)";
         ctxDebug.fill();
