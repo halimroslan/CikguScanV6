@@ -13,7 +13,7 @@ export default defineConfig(({mode}) => {
       VitePWA({
         registerType: 'autoUpdate',
         injectRegister: null,
-        includeAssets: ['icon.svg', 'apple-touch-icon.png', 'icon-144.png'],
+        includeAssets: ['favicon.ico', 'icon.svg', 'apple-touch-icon-180x180.png'],
         manifest: {
           name: 'CikguScan',
           short_name: 'CikguScan',
@@ -24,8 +24,8 @@ export default defineConfig(({mode}) => {
           start_url: '/',
           icons: [
             {
-              src: '/icon-144.png',
-              sizes: '144x144',
+              src: '/pwa-64x64.png',
+              sizes: '64x64',
               type: 'image/png',
               purpose: 'any'
             },
@@ -42,7 +42,7 @@ export default defineConfig(({mode}) => {
               purpose: 'any'
             },
             {
-              src: '/pwa-512x512-maskable.png',
+              src: '/maskable-icon-512x512.png',
               sizes: '512x512',
               type: 'image/png',
               purpose: 'maskable'
