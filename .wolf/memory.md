@@ -36,3 +36,17 @@ description: chronological action log per session, consolidated weekly
   - `PROJECT_FLOW.md` & `ROADMAP.md` dikemaskini.
   - Git status disemak; perubahan sedia untuk komit.
   - Sasaran Fasa 6: Migrasi Supabase PostgreSQL & Realtime Cloud Sync.
+
+
+## [2026-11-01] Pembetulan Pembedahan: Penapisan Rekod PDF/Excel Mengikut Pentaksiran Semasa
+- **Isu:** Eksport PDF/Excel untuk kelas (cth. 2 Jabir / 2J seramai 26 orang) mengeluarkan bilangan rekod berlebihan (lebih 26 calon) kerana data terkumpul 283 rekod merentas pelbagai pentaksiran lampau tidak ditapis mengikut `currentPentaksiranId`.
+- **Punca:** Fungsi `eksportPDF()` dan `eksportExcel()` hanya menapis `window.senaraiRekodKelas` berasaskan dropdown kelas tanpa menyemak `window.currentPentaksiranId`, tidak seperti paparan UI `paparAnalisisUI()`.
+- **Tindakan Pembedahan:**
+  1. Menapis `baseRecords` mengikut `window.currentPentaksiranId` sebelum `filter-kelas-dropdown` dijalankan.
+  2. Menyelaraskan `window.JUMLAH_SOALAN`, skema jawapan, dan nama pentaksiran semasa secara dinamik.
+  3. Memperbaiki tajuk dokumen dan nama fail muat turun PDF/Excel.
+- **Ujian & Pengesahan:** Ujian simulasi 283 rekod mengesahkan tepat 26 rekod dipulangkan bagi 2 Jabir dalam PAT T2 2026.
+- **Penyebaran:**
+  - Git commit: `417657c`
+  - Push: `https://github.com/halimroslan/CikguScanV6.git` (main)
+  - Vercel Production: `https://cikguscan.vercel.app` (Siap dalam 20s).

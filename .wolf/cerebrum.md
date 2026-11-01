@@ -27,6 +27,7 @@ budget_tokens: 2000
 - `[2026-09-25]` **Mandatory Backup Rule:** Dilarang mengubah kod sumber tanpa membuat sandaran ke `/Users/halimroslan/NEW CIDS SUITES PRO/` terlebih dahulu.
 - `[2026-07-28]` **No Heavy External Chart Libraries:** Dilarang memasukkan pustaka visualisasi berat (seperti Chart.js atau D3). Gunakan fungsi penjana SVG asli `processChartBlocks()` untuk memelihara saiz muat turun PWA.
 - `[2026-11-01]` **Consistent Naming & Auto Column Sizing:** Eksport Excel mestilah menjana format multi-lembaran kemas dengan penetapan lebar lajur automatik (`!cols`) dan pengekodan nama fail bersih (`Analisis_CikguScan_[Kelas]_[Tarikh].xlsx`).
+- `[2026-11-01]` **Strict Pentaksiran Scoping on Export:** Sebarang fungsi eksport (PDF, Excel, CSV) WAJIB menapis `baseRecords` mengikut `window.currentPentaksiranId` terlebih dahulu sebelum tapisan kelas dilakukan, bagi mengelakkan percampuran data rekod murid daripada pentaksiran lampau.
 
 ## Decision Log
 
