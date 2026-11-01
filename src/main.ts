@@ -1,4 +1,5 @@
 import "./index.css";
+import * as XLSX from "xlsx";
 import { registerSW } from "virtual:pwa-register";
 import {
   doc,
@@ -3352,15 +3353,345 @@ function executePrint(revertBtn: (() => void) | null) {
   });
 }
 
+function kiraGredKPM(peratus: number): { gred: string; status: string; label: string } {
+  if (peratus >= 90) return { gred: "A+", status: "Cemerlang Tertinggi", label: "Cemerlang" };
+  if (peratus >= 80) return { gred: "A", status: "Cemerlang Tinggi", label: "Cemerlang" };
+  if (peratus >= 75) return { gred: "A-", status: "Cemerlang", label: "Cemerlang" };
+  if (peratus >= 70) return { gred: "B+", status: "Kepujian Tertinggi", label: "Kepujian" };
+  if (peratus >= 65) return { gred: "B", status: "Kepujian Tinggi", label: "Kepujian" };
+  if (peratus >= 60) return { gred: "C+", status: "Kepujian", label: "Baik" };
+  if (peratus >= 55) return { gred: "C", status: "Memuaskan", label: "Baik" };
+  if (peratus >= 50) return { gred: "D", status: "Tahap Minimum", label: "Lulus" };
+  if (peratus >= 40) return { gred: "E", status: "Lulus Minimum", label: "Lulus" };
+  return { gred: "G", status: "Belum Mencapai Tahap Minimum", label: "Perlu Bimbingan" };
+}
+
+function eksportExcel() {
+  const revertBtn = startPrintLoading("btn-eksport-excel", "Menjana Excel...");
+  try {
+    let dropdown = document.getElementById(
+      "filter-kelas-dropdown",
+    ) as HTMLSelectElement;
+    let filterValue = dropdown ? dropdown.value : "Semua";
+
+    let baseRecords = window.senaraiRekodKelas || [];
+    if (window.currentPentaksiranId) {
+      baseRecords = baseRecords.filter(
+        (r: any) => (r.pentaksiranId || "umum") === window.currentPentaksiranId,
+      );
+    }
+
+    let filteredRecords = baseRecords;
+    if (filterValue !== "Semua") {
+      filteredRecords = baseRecords.filter(
+        (r: any) => (r.kelas || "Kelas Umum") === filterValue,
+      );
+    }
+
+    if (filteredRecords.length === 0) {
+      paparAlert(
+        "Tiada Data",
+        "Sila imbas sekurang-kurangnya satu kertas sebelum mengeksport fail Excel.",
+      );
+      if (revertBtn) revertBtn();
+      return;
+    }
+
+    let jumlahSoalan = window.JUMLAH_SOALAN || 20;
+    let skema = window.skemaJawapan || [];
+    let namaPentaksiran = "Pentaksiran Umum";
+
+    if (window.currentPentaksiranId && window.pentaksiranList) {
+      const p = window.pentaksiranList.find(
+        (x: any) => x.id === window.currentPentaksiranId,
+      );
+      if (p) {
+        if (p.nama) namaPentaksiran = p.nama;
+        if (p.jumlahSoalan) jumlahSoalan = p.jumlahSoalan;
+        if (p.skemaJawapan && p.skemaJawapan.length > 0) skema = p.skemaJawapan;
+      }
+    }
+
+    window.JUMLAH_SOALAN = jumlahSoalan;
+    window.skemaJawapan = skema;
+
+    const wb = XLSX.utils.book_new();
+    let sortedRecords = [...filteredRecords].sort((a: any, b: any) => b.markah - a.markah);
+
+    // 1. LEMBARAN 1: MARKAH PELAJAR
+    const headerPelajar = [
+      "Bil",
+      "ID Rekod",
+      "Nama Pelajar / Label",
+      "Kelas",
+      "Markah",
+      "Jumlah Soalan",
+      "Peratus (%)",
+      "Gred",
+      "Tahap Penguasaan",
+      "Status Keputusan",
+      "Pengesahan AI",
+    ];
+
+    const rowsPelajar = sortedRecords.map((r: any, idx: number) => {
+      const p = typeof r.peratus === "number" ? r.peratus : parseFloat(r.peratus || "0");
+      const infoGred = kiraGredKPM(p);
+      return [
+        idx + 1,
+        r.id || `CALON-${idx + 1}`,
+        r.namaDiramal || "Calon " + (idx + 1),
+        r.kelas || "Kelas Umum",
+        r.markah,
+        r.jumlah || jumlahSoalan,
+        p,
+        infoGred.gred,
+        infoGred.status,
+        p >= 40 ? "LULUS" : "GAGAL",
+        r.isAiVerified ? "Disahkan AI (Gemini)" : "Optik Standard",
+      ];
+    });
+
+    const wsPelajar = XLSX.utils.aoa_to_sheet([headerPelajar, ...rowsPelajar]);
+    wsPelajar["!cols"] = [
+      { wch: 6 },
+      { wch: 18 },
+      { wch: 28 },
+      { wch: 16 },
+      { wch: 10 },
+      { wch: 14 },
+      { wch: 14 },
+      { wch: 8 },
+      { wch: 26 },
+      { wch: 18 },
+      { wch: 24 },
+    ];
+    XLSX.utils.book_append_sheet(wb, wsPelajar, "Markah Individu");
+
+    // 2. LEMBARAN 2: ANALISIS ITEM & DISTRAKTOR
+    const headerItem = [
+      "No. Soalan",
+      "Skema Jawapan",
+      "Bil. Calon Betul",
+      "Bil. Calon Salah",
+      "Peratus Betul (%)",
+      "Indeks Kesukaran (p)",
+      "Aras Kesukaran",
+      "Indeks Diskriminasi (d)",
+      "Kualiti Item",
+      "Pilihan A (%)",
+      "Pilihan B (%)",
+      "Pilihan C (%)",
+      "Pilihan D (%)",
+      "Batal/Kosong (%)",
+    ];
+
+    let groupSize = Math.max(1, Math.round(sortedRecords.length * 0.27));
+    let topGroup = sortedRecords.slice(0, groupSize);
+    let bottomGroup = sortedRecords.slice(sortedRecords.length - groupSize);
+
+    const rowsItem: any[] = [];
+    for (let i = 0; i < jumlahSoalan; i++) {
+      let ans = skema[i];
+      if (!ans) continue;
+
+      let correctCount = 0;
+      let wrongCount = 0;
+      let optionsCount: any = { A: 0, B: 0, C: 0, D: 0, BATAL: 0, KOSONG: 0 };
+
+      sortedRecords.forEach((r: any) => {
+        let ansPelajar = r.butiran && r.butiran[i] ? r.butiran[i].jawapanPelajar : "KOSONG";
+        if (ansPelajar === ans) {
+          correctCount++;
+        } else {
+          wrongCount++;
+        }
+        if (optionsCount[ansPelajar] !== undefined) optionsCount[ansPelajar]++;
+        else optionsCount["KOSONG"]++;
+      });
+
+      let percentCorrect = parseFloat(((correctCount / sortedRecords.length) * 100).toFixed(1));
+      let pIndex = parseFloat((correctCount / sortedRecords.length).toFixed(3));
+      let arasKesukaran = pIndex >= 0.8 ? "Mudah" : pIndex >= 0.3 ? "Sederhana" : "Sukar";
+
+      let dfVal: number | string = "-";
+      let kualitiItem = "-";
+      if (sortedRecords.length >= 2) {
+        let topCorrect = topGroup.filter(
+          (r) => r.butiran && r.butiran[i] && r.butiran[i].jawapanPelajar === ans,
+        ).length;
+        let bottomCorrect = bottomGroup.filter(
+          (r) => r.butiran && r.butiran[i] && r.butiran[i].jawapanPelajar === ans,
+        ).length;
+        let diff = (topCorrect / groupSize) - (bottomCorrect / groupSize);
+        dfVal = parseFloat(diff.toFixed(3));
+        if (diff >= 0.4) kualitiItem = "Sangat Baik";
+        else if (diff >= 0.3) kualitiItem = "Baik";
+        else if (diff >= 0.2) kualitiItem = "Sederhana";
+        else kualitiItem = "Perlu Semakan / Ubah Suai";
+      }
+
+      let pctA = parseFloat(((optionsCount["A"] / sortedRecords.length) * 100).toFixed(1));
+      let pctB = parseFloat(((optionsCount["B"] / sortedRecords.length) * 100).toFixed(1));
+      let pctC = parseFloat(((optionsCount["C"] / sortedRecords.length) * 100).toFixed(1));
+      let pctD = parseFloat(((optionsCount["D"] / sortedRecords.length) * 100).toFixed(1));
+      let pctLain = parseFloat((((optionsCount["BATAL"] + optionsCount["KOSONG"]) / sortedRecords.length) * 100).toFixed(1));
+
+      rowsItem.push([
+        i + 1,
+        ans,
+        correctCount,
+        wrongCount,
+        percentCorrect,
+        pIndex,
+        arasKesukaran,
+        dfVal,
+        kualitiItem,
+        pctA,
+        pctB,
+        pctC,
+        pctD,
+        pctLain,
+      ]);
+    }
+
+    const wsItem = XLSX.utils.aoa_to_sheet([headerItem, ...rowsItem]);
+    wsItem["!cols"] = [
+      { wch: 12 },
+      { wch: 15 },
+      { wch: 16 },
+      { wch: 16 },
+      { wch: 18 },
+      { wch: 20 },
+      { wch: 16 },
+      { wch: 22 },
+      { wch: 24 },
+      { wch: 14 },
+      { wch: 14 },
+      { wch: 14 },
+      { wch: 14 },
+      { wch: 18 },
+    ];
+    XLSX.utils.book_append_sheet(wb, wsItem, "Analisis Item & Distraktor");
+
+    // 3. LEMBARAN 3: RINGKASAN & TABURAN KELAS
+    let totalMarkah = sortedRecords.map((r: any) => r.markah).sort((a: any, b: any) => a - b);
+    let min = totalMarkah[0] || 0;
+    let max = totalMarkah[totalMarkah.length - 1] || 0;
+    let sum = totalMarkah.reduce((a: any, b: any) => a + b, 0);
+    let avg = totalMarkah.length > 0 ? (sum / totalMarkah.length).toFixed(1) : "0";
+
+    let mid = Math.floor(totalMarkah.length / 2);
+    let median: any = totalMarkah.length % 2 !== 0 ? totalMarkah[mid] : ((totalMarkah[mid - 1] + totalMarkah[mid]) / 2).toFixed(1);
+
+    let bilLulus = sortedRecords.filter((r: any) => parseFloat(r.peratus) >= 40).length;
+    let peratusLulus = ((bilLulus / sortedRecords.length) * 100).toFixed(1);
+
+    const rowsRingkasan: any[] = [
+      ["LAPORAN ANALISIS PENTAKSIRAN CIKGUSCAN"],
+      ["Dijana Secara Automatik Menggunakan CikguScan (OMR Smart Sheet Scanner PWA)"],
+      [],
+      ["Maklumat Pentaksiran", ""],
+      ["Pentaksiran", namaPentaksiran],
+      ["Kelas / Kumpulan", filterValue],
+      ["Tarikh Eksport", new Date().toLocaleDateString("ms-MY")],
+      ["Masa Eksport", new Date().toLocaleTimeString("ms-MY")],
+      ["Jumlah Calon Diimbas", sortedRecords.length],
+      ["Jumlah Soalan", jumlahSoalan],
+      [],
+      ["Statistik Prestasi Kelas", ""],
+      ["Markah Penuh", jumlahSoalan],
+      ["Markah Tertinggi", max],
+      ["Markah Terendah", min],
+      ["Purata Markah (Mean)", avg],
+      ["Median Skor", median],
+      ["Bilangan Calon Lulus (>= 40%)", bilLulus],
+      ["Peratus Kelulusan Kelas (%)", peratusLulus + "%"],
+      [],
+      ["Taburan Gred Standard KPM", "Julat Peratus", "Item Betul", "Bil. Murid", "Peratus (%)"],
+    ];
+
+    let taburanKPM = [
+      { gred: "A+ (Cemerlang Tertinggi)", min: 90, max: 100, count: 0 },
+      { gred: "A (Cemerlang Tinggi)", min: 80, max: 89.999, count: 0 },
+      { gred: "A- (Cemerlang)", min: 75, max: 79.999, count: 0 },
+      { gred: "B+ (Kepujian Tertinggi)", min: 70, max: 74.999, count: 0 },
+      { gred: "B (Kepujian)", min: 65, max: 69.999, count: 0 },
+      { gred: "C+ (Baik)", min: 60, max: 64.999, count: 0 },
+      { gred: "C (Memuaskan)", min: 55, max: 59.999, count: 0 },
+      { gred: "D (Tahap Minimum)", min: 50, max: 54.999, count: 0 },
+      { gred: "E (Lulus)", min: 40, max: 49.999, count: 0 },
+      { gred: "G (Perlu Bimbingan)", min: 0, max: 39.999, count: 0 },
+    ];
+
+    sortedRecords.forEach((r: any) => {
+      let p = parseFloat(r.peratus);
+      for (let i = 0; i < taburanKPM.length; i++) {
+        if (p >= taburanKPM[i].min && p <= taburanKPM[i].max) {
+          taburanKPM[i].count++;
+          break;
+        }
+      }
+    });
+
+    taburanKPM.forEach((t) => {
+      let minScore = Math.ceil((t.min / 100) * jumlahSoalan);
+      let maxScore = Math.floor((t.max / 100) * jumlahSoalan);
+      let scoreLabel = minScore > maxScore ? "-" : minScore === maxScore ? minScore.toString() : minScore + " - " + maxScore;
+      let pctCalon = ((t.count / sortedRecords.length) * 100).toFixed(1);
+      rowsRingkasan.push([
+        t.gred,
+        `${Math.round(t.min)}% - ${Math.round(t.max)}%`,
+        scoreLabel,
+        t.count,
+        pctCalon + "%",
+      ]);
+    });
+
+    const wsRingkasan = XLSX.utils.aoa_to_sheet(rowsRingkasan);
+    wsRingkasan["!cols"] = [
+      { wch: 32 },
+      { wch: 22 },
+      { wch: 16 },
+      { wch: 14 },
+      { wch: 16 },
+    ];
+    XLSX.utils.book_append_sheet(wb, wsRingkasan, "Ringkasan & Taburan Kelas");
+
+    // Simpan fail Excel
+    const safePentaksiran = namaPentaksiran.replace(/[^a-zA-Z0-9_\u0600-\u06FF]/g, "_");
+    const safeKelas = filterValue.replace(/[^a-zA-Z0-9_\u0600-\u06FF]/g, "_");
+    const tarikhStr = new Date().toISOString().slice(0, 10);
+    const fileName = `Analisis_${safePentaksiran}_${safeKelas}_${tarikhStr}.xlsx`;
+    XLSX.writeFile(wb, fileName);
+
+    paparAlert("Eksport Berjaya", `Fail Excel "${fileName}" berjaya dimuat turun.`);
+  } catch (err: any) {
+    console.error("Ralat eksport Excel:", err);
+    paparAlert("Ralat Eksport", "Gagal menjana fail Excel: " + (err.message || err));
+  } finally {
+    if (revertBtn) {
+      setTimeout(revertBtn, 500);
+    }
+  }
+}
+
 function eksportPDF() {
   const revertBtn = startPrintLoading("btn-eksport-pdf", "Memuatkan...");
   let dropdown = document.getElementById(
     "filter-kelas-dropdown",
   ) as HTMLSelectElement;
   let filterValue = dropdown ? dropdown.value : "Semua";
-  let filteredRecords = window.senaraiRekodKelas;
+
+  let baseRecords = window.senaraiRekodKelas || [];
+  if (window.currentPentaksiranId) {
+    baseRecords = baseRecords.filter(
+      (r: any) => (r.pentaksiranId || "umum") === window.currentPentaksiranId,
+    );
+  }
+
+  let filteredRecords = baseRecords;
   if (filterValue !== "Semua") {
-    filteredRecords = window.senaraiRekodKelas.filter(
+    filteredRecords = baseRecords.filter(
       (r: any) => (r.kelas || "Kelas Umum") === filterValue,
     );
   }
@@ -3370,71 +3701,179 @@ function eksportPDF() {
       "Tiada Data",
       "Sila imbas sekurang-kurangnya satu kertas sebelum mengeksport laporan PDF.",
     );
+    if (revertBtn) revertBtn();
     return;
   }
 
+  let jumlahSoalan = window.JUMLAH_SOALAN || 20;
+  let skema = window.skemaJawapan || [];
+  let namaPentaksiran = "Pentaksiran Umum";
+
+  if (window.currentPentaksiranId && window.pentaksiranList) {
+    const p = window.pentaksiranList.find(
+      (x: any) => x.id === window.currentPentaksiranId,
+    );
+    if (p) {
+      if (p.nama) namaPentaksiran = p.nama;
+      if (p.jumlahSoalan) jumlahSoalan = p.jumlahSoalan;
+      if (p.skemaJawapan && p.skemaJawapan.length > 0) skema = p.skemaJawapan;
+    }
+  }
+
+  window.JUMLAH_SOALAN = jumlahSoalan;
+  window.skemaJawapan = skema;
+
   let container = document.getElementById("cetakan-analisis-container")!;
+  let sortedIndividu = [...filteredRecords].sort((a, b) => b.markah - a.markah);
+
+  let totalMarkah = sortedIndividu.map((r: any) => r.markah).sort((a: any, b: any) => a - b);
+  let min = totalMarkah[0] || 0;
+  let max = totalMarkah[totalMarkah.length - 1] || 0;
+  let sum = totalMarkah.reduce((a: any, b: any) => a + b, 0);
+  let avg = totalMarkah.length > 0 ? (sum / totalMarkah.length).toFixed(1) : "0";
+  let avgPeratus = ((parseFloat(avg) / jumlahSoalan) * 100).toFixed(1);
+
+  let bilLulus = sortedIndividu.filter((r: any) => parseFloat(r.peratus) >= 40).length;
+  let peratusLulus = ((bilLulus / sortedIndividu.length) * 100).toFixed(1);
+
+  let cemerlangCount = sortedIndividu.filter((r: any) => parseFloat(r.peratus) >= 80).length;
+  let bimbinganCount = sortedIndividu.filter((r: any) => parseFloat(r.peratus) < 40).length;
 
   let reportHtml = `
-        <div class="text-center mb-8 text-black border-b-2 border-gray-200 pb-6">
-            <div class="flex items-center justify-center gap-2 mb-3">
-                <svg class="w-10 h-10 text-apple-blue" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <rect x="6.5" y="5.5" width="11" height="13" rx="3.5" fill="currentColor" fill-opacity="0.2" />
-                    <path d="M8 4H6.5C5.11929 4 4 5.11929 4 6.5V8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                    <path d="M16 4H17.5C18.8807 4 20 5.11929 20 6.5V8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                    <path d="M8 20H6.5C5.11929 20 4 18.8807 4 17.5V16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                    <path d="M16 20H17.5C18.8807 20 20 18.8807 20 17.5V16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                    <path d="M2 12H22" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
-                </svg>
-                <div class="flex flex-col items-start gap-1">
-                    <h1 class="text-3xl font-extrabold tracking-tight text-apple-text leading-none">CikguScan</h1>
-                    <span class="bg-[#1d1d1f] text-white text-[10px] px-2.5 py-0.5 rounded-full font-medium tracking-wide shadow-sm">By Sir Halim</span>
+        <div class="text-center mb-6 text-black border-b-2 border-gray-900 pb-5">
+            <div class="flex items-center justify-between mb-3">
+                <div class="flex items-center gap-3">
+                    <svg class="w-10 h-10 text-apple-blue" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <rect x="6.5" y="5.5" width="11" height="13" rx="3.5" fill="currentColor" fill-opacity="0.2" />
+                        <path d="M8 4H6.5C5.11929 4 4 5.11929 4 6.5V8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                        <path d="M16 4H17.5C18.8807 4 20 5.11929 20 6.5V8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                        <path d="M8 20H6.5C5.11929 20 4 18.8807 4 17.5V16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                        <path d="M16 20H17.5C18.8807 20 20 18.8807 20 17.5V16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                        <path d="M2 12H22" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
+                    </svg>
+                    <div class="text-left">
+                        <h1 class="text-2xl font-black tracking-tight text-gray-900 leading-none">CikguScan</h1>
+                        <span class="text-[10px] text-gray-500 font-semibold tracking-wider uppercase">Sistem Semakan OMR Pintar Bilik Darjah</span>
+                    </div>
+                </div>
+                <div class="text-right text-xs text-gray-500 font-medium">
+                    <p>Tarikh Jana: <span class="font-bold text-gray-800">${new Date().toLocaleDateString("ms-MY")}</span></p>
+                    <p>Masa: <span class="font-bold text-gray-800">${new Date().toLocaleTimeString("ms-MY", { hour: "2-digit", minute: "2-digit" })}</span></p>
                 </div>
             </div>
-            <h2 class="text-2xl font-bold uppercase tracking-tight mt-4">Laporan Analisis</h2>
-            <p class="text-lg font-medium mt-1 text-gray-600">Kelas: <span class="text-black font-bold">${filterValue}</span></p>
-            <p class="text-xs font-medium text-gray-400 mt-2">Tarikh Jana: ${new Date().toLocaleDateString("ms-MY")}</p>
+            <h2 class="text-2xl font-black uppercase tracking-tight text-gray-900 mt-2">Laporan Analisis Pentaksiran & Item OMR</h2>
+            <div class="flex items-center justify-center gap-6 text-sm font-semibold text-gray-700 mt-2">
+                <span>Pentaksiran: <strong class="text-black font-black">${namaPentaksiran}</strong></span>
+                <span>•</span>
+                <span>Kelas: <strong class="text-black font-black">${filterValue}</strong></span>
+                <span>•</span>
+                <span>Jumlah Calon: <strong class="text-black font-black">${sortedIndividu.length}</strong></span>
+                <span>•</span>
+                <span>Jumlah Soalan: <strong class="text-black font-black">${jumlahSoalan}</strong></span>
+            </div>
+        </div>
+
+        <!-- KPI SUMMARY GRID -->
+        <div class="grid grid-cols-4 gap-3 mb-8">
+            <div class="border border-gray-300 rounded-lg p-3 text-center bg-gray-50">
+                <span class="block text-[11px] font-bold uppercase text-gray-500">Purata Markah</span>
+                <span class="text-2xl font-black text-gray-900">${avg} <span class="text-xs text-gray-500">/${jumlahSoalan}</span></span>
+                <span class="block text-[11px] font-medium text-gray-600 mt-0.5">${avgPeratus}%</span>
+            </div>
+            <div class="border border-gray-300 rounded-lg p-3 text-center bg-gray-50">
+                <span class="block text-[11px] font-bold uppercase text-gray-500">Kadar Kelulusan</span>
+                <span class="text-2xl font-black text-emerald-700">${peratusLulus}%</span>
+                <span class="block text-[11px] font-medium text-gray-600 mt-0.5">${bilLulus}/${sortedIndividu.length} Calon</span>
+            </div>
+            <div class="border border-gray-300 rounded-lg p-3 text-center bg-gray-50">
+                <span class="block text-[11px] font-bold uppercase text-gray-500">Murid Cemerlang (≥80%)</span>
+                <span class="text-2xl font-black text-blue-700">${cemerlangCount}</span>
+                <span class="block text-[11px] font-medium text-gray-600 mt-0.5">${((cemerlangCount / sortedIndividu.length) * 100).toFixed(0)}% Calon</span>
+            </div>
+            <div class="border border-gray-300 rounded-lg p-3 text-center bg-gray-50">
+                <span class="block text-[11px] font-bold uppercase text-gray-500">Perlu Bimbingan (&lt;40%)</span>
+                <span class="text-2xl font-black text-red-600">${bimbinganCount}</span>
+                <span class="block text-[11px] font-medium text-gray-600 mt-0.5">${((bimbinganCount / sortedIndividu.length) * 100).toFixed(0)}% Calon</span>
+            </div>
         </div>
     `;
 
   reportHtml += `
         <div class="mb-10 text-black">
-            <h2 class="text-xl font-bold border-b-2 border-black pb-2 mb-4 uppercase">1. Ringkasan & Taburan Kelas</h2>
+            <h2 class="text-lg font-black border-b-2 border-black pb-1.5 mb-4 uppercase tracking-wide">1. Ringkasan & Taburan Skor Kelas</h2>
             ${renderAnalisisKelasHtml(filteredRecords)}
+        </div>
+    `;
+
+  // HIGHLIGHT SECTION: MURID CEMERLANG & INTERVENSI
+  let muridCemerlang = sortedIndividu.filter((r: any) => parseFloat(r.peratus) >= 80);
+  let muridBimbingan = sortedIndividu.filter((r: any) => parseFloat(r.peratus) < 40);
+
+  reportHtml += `
+        <div class="mb-10 text-black">
+            <h2 class="text-lg font-black border-b-2 border-black pb-1.5 mb-4 uppercase tracking-wide">2. Analisis Kumpulan Murid (Intervensi & Pengayaan)</h2>
+            <div class="grid grid-cols-2 gap-4">
+                <div class="border border-blue-200 rounded-lg p-3.5 bg-blue-50/50">
+                    <h3 class="font-bold text-blue-900 text-sm uppercase mb-2 flex items-center justify-between">
+                        <span>🌟 Murid Cemerlang (Pengayaan)</span>
+                        <span class="text-xs bg-blue-200 text-blue-800 px-2 py-0.5 rounded-full">${muridCemerlang.length} Orang</span>
+                    </h3>
+                    ${muridCemerlang.length > 0 ? `
+                        <ol class="list-decimal list-inside text-xs space-y-1 font-medium text-gray-800">
+                            ${muridCemerlang.slice(0, 8).map((m: any) => `<li>${m.namaDiramal || m.id} — <strong>${m.markah}/${jumlahSoalan} (${m.peratus}%)</strong></li>`).join("")}
+                        </ol>
+                    ` : `<p class="text-xs text-gray-500 italic">Tiada calon melepasi 80% dalam pentaksiran ini.</p>`}
+                </div>
+                <div class="border border-red-200 rounded-lg p-3.5 bg-red-50/50">
+                    <h3 class="font-bold text-red-900 text-sm uppercase mb-2 flex items-center justify-between">
+                        <span>⚠️ Murid Perlu Bimbingan (Intervensi)</span>
+                        <span class="text-xs bg-red-200 text-red-800 px-2 py-0.5 rounded-full">${muridBimbingan.length} Orang</span>
+                    </h3>
+                    ${muridBimbingan.length > 0 ? `
+                        <ol class="list-decimal list-inside text-xs space-y-1 font-medium text-gray-800">
+                            ${muridBimbingan.slice(0, 8).map((m: any) => `<li>${m.namaDiramal || m.id} — <strong>${m.markah}/${jumlahSoalan} (${m.peratus}%)</strong></li>`).join("")}
+                        </ol>
+                    ` : `<p class="text-xs text-emerald-600 font-bold">Syabas! Tiada calon bawah 40% dalam kelas ini.</p>`}
+                </div>
+            </div>
         </div>
     `;
 
   reportHtml += `
         <div class="mb-10 print-page-break text-black">
-            <h2 class="text-xl font-bold border-b-2 border-black pb-2 mb-4 uppercase">2. Analisis Item</h2>
+            <h2 class="text-lg font-black border-b-2 border-black pb-1.5 mb-4 uppercase tracking-wide">3. Analisis Item & Distraktor Soalan</h2>
             ${renderAnalisisItemHtml(filteredRecords)}
         </div>
     `;
 
-  let tableIndividu = `<table class="w-full text-left border-collapse mt-4 text-sm text-black">
-        <thead class="bg-gray-100 border-b border-gray-300 font-bold uppercase text-[11px] tracking-wider text-gray-600">
+  let tableIndividu = `<table class="w-full text-left border-collapse mt-4 text-xs text-black">
+        <thead class="bg-gray-100 border-b border-gray-300 font-bold uppercase text-[10px] tracking-wider text-gray-600">
             <tr>
-                <th class="p-3 border border-gray-300 w-12 text-center">Bil</th>
-                <th class="p-3 border border-gray-300">Keratan Nama</th>
-                <th class="p-3 border border-gray-300 text-center w-28">Kelas</th>
-                <th class="p-3 border border-gray-300 text-center w-24">Markah</th>
-                <th class="p-3 border border-gray-300 text-center w-24">Peratus</th>
+                <th class="p-2 border border-gray-300 w-10 text-center">Bil</th>
+                <th class="p-2 border border-gray-300">Nama Pelajar / Keratan</th>
+                <th class="p-2 border border-gray-300 text-center w-24">Kelas</th>
+                <th class="p-2 border border-gray-300 text-center w-20">Skor</th>
+                <th class="p-2 border border-gray-300 text-center w-20">Peratus</th>
+                <th class="p-2 border border-gray-300 text-center w-16">Gred</th>
+                <th class="p-2 border border-gray-300 text-center w-20">Status</th>
             </tr>
         </thead>
         <tbody>`;
 
-  let sortedIndividu = [...filteredRecords].sort((a, b) => b.markah - a.markah);
-
   sortedIndividu.forEach((rekod, index) => {
+    let p = typeof rekod.peratus === "number" ? rekod.peratus : parseFloat(rekod.peratus || "0");
+    let infoGred = kiraGredKPM(p);
     tableIndividu += `
             <tr class="border-b border-gray-300 hover:bg-gray-50 transition-colors">
                 <td class="p-2 border border-gray-300 text-center font-semibold text-gray-600">${index + 1}</td>
                 <td class="p-2 border border-gray-300 bg-white">
-                    ${rekod.imejNama ? `<div class="flex flex-col items-center justify-center gap-1"><img src="${rekod.imejNama}" class="h-8 sm:h-10 object-contain mx-auto sm:mx-0" style="filter: grayscale(100%) contrast(180%);" />${rekod.namaDiramal ? `<div class="text-[10px] font-bold text-blue-700 bg-gray-50 border border-gray-200 px-2 py-0.5 rounded-sm">${rekod.namaDiramal}</div>` : ""}</div>` : "-"}
+                    ${rekod.imejNama ? `<div class="flex items-center gap-2"><img src="${rekod.imejNama}" class="h-7 object-contain" style="filter: grayscale(100%) contrast(180%);" />${rekod.namaDiramal ? `<span class="text-xs font-bold text-blue-700">${rekod.namaDiramal}</span>` : ""}</div>` : `<span class="font-bold text-gray-800">${rekod.namaDiramal || "Calon " + (index + 1)}</span>`}
                 </td>
                 <td class="p-2 border border-gray-300 text-center font-medium text-gray-600">${rekod.kelas || "Kelas Umum"}</td>
-                <td class="p-2 border border-gray-300 text-center font-bold text-lg">${rekod.markah}/${window.JUMLAH_SOALAN}</td>
-                <td class="p-2 border border-gray-300 text-center font-bold text-lg">${rekod.peratus}%</td>
+                <td class="p-2 border border-gray-300 text-center font-bold text-sm">${rekod.markah}/${jumlahSoalan}</td>
+                <td class="p-2 border border-gray-300 text-center font-bold text-sm">${rekod.peratus}%</td>
+                <td class="p-2 border border-gray-300 text-center font-black text-sm">${infoGred.gred}</td>
+                <td class="p-2 border border-gray-300 text-center font-bold text-xs ${p >= 40 ? "text-emerald-700" : "text-red-600"}">${p >= 40 ? "LULUS" : "GAGAL"}</td>
             </tr>
         `;
   });
@@ -3442,17 +3881,37 @@ function eksportPDF() {
 
   reportHtml += `
         <div class="print-page-break text-black">
-            <h2 class="text-xl font-bold border-b-2 border-black pb-2 mb-4 uppercase">3. Senarai Markah Individu</h2>
+            <h2 class="text-lg font-black border-b-2 border-black pb-1.5 mb-4 uppercase tracking-wide">4. Senarai Lengkap Markah Calon</h2>
             ${tableIndividu}
+        </div>
+    `;
+
+  // SIGNATURE FOOTER FOR TEACHER & PRINCIPAL
+  reportHtml += `
+        <div class="mt-12 pt-8 border-t border-gray-300 grid grid-cols-2 gap-12 text-xs text-gray-800 print:mt-16">
+            <div class="text-center">
+                <p class="font-bold uppercase mb-16">Disediakan Oleh:</p>
+                <div class="border-b border-black w-3/4 mx-auto mb-1"></div>
+                <p class="font-bold">( GURU MATA PELAJARAN )</p>
+                <p class="text-[10px] text-gray-500">Tarikh: ___________________</p>
+            </div>
+            <div class="text-center">
+                <p class="font-bold uppercase mb-16">Disahkan Oleh:</p>
+                <div class="border-b border-black w-3/4 mx-auto mb-1"></div>
+                <p class="font-bold">( KETUA PANITIA / PENGETUA )</p>
+                <p class="text-[10px] text-gray-500">Tarikh: ___________________</p>
+            </div>
         </div>
     `;
 
   container.innerHTML = reportHtml;
 
+  const safePentaksiran = namaPentaksiran.replace(/[^a-zA-Z0-9_\u0600-\u06FF]/g, "_");
+  const safeKelas = filterValue.replace(/[^a-zA-Z0-9_\u0600-\u06FF]/g, "_");
   if (filterValue === "Semua") {
-    document.title = "Analisis Keseluruhan Cikgu Scan";
+    document.title = `Analisis_${safePentaksiran}_Semua_Kelas`;
   } else {
-    document.title = `Analisis Kelas ${filterValue} Cikgu Scan`;
+    document.title = `Analisis_${safePentaksiran}_${safeKelas}`;
   }
 
   document.body.classList.remove("mode-cetak-skema");
@@ -3461,9 +3920,14 @@ function eksportPDF() {
 
   executePrint(revertBtn);
 }
+
 document
-  .getElementById("btn-eksport-pdf")!
-  .addEventListener("click", eksportPDF);
+  .getElementById("btn-eksport-pdf")
+  ?.addEventListener("click", eksportPDF);
+
+document
+  .getElementById("btn-eksport-excel")
+  ?.addEventListener("click", eksportExcel);
 
 function janaBorangSkema() {
   const bekas = document.getElementById("borang-skema")!;

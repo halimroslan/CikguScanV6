@@ -1,0 +1,642 @@
+{
+  "version": 1,
+  "meta": {
+    "lastScanned": "2026-11-01T09:05:28.630Z",
+    "fileCount": 36,
+    "hits": 0,
+    "misses": 0,
+    "renderedHash": "8530c36186ff5b12dc47147e07b27f0c0073211d373147c6624824b6810d8a04",
+    "storeUpdatedAt": "2026-11-01T09:05:28.631Z",
+    "rootHash": "13b59ac6ae61459e"
+  },
+  "files": {
+    ".gitignore": {
+      "description": "Git ignore rules",
+      "tokens": 45,
+      "hash": "9aa9562643824ed8",
+      "size": 170,
+      "mtimeMs": 1790340472623.2507,
+      "updatedAt": "2026-11-01T09:05:28.476Z",
+      "source": "scan",
+      "importance": 0.4522
+    },
+    ".ignore": {
+      "description": "graft's cards are gitignored but should stay greppable: ripgrep reads",
+      "tokens": 48,
+      "hash": "5b345696ac9daf0b",
+      "size": 180,
+      "mtimeMs": 1790340472623.531,
+      "updatedAt": "2026-11-01T09:05:28.476Z",
+      "source": "scan",
+      "importance": 0.4522
+    },
+    "AGENTS.md": {
+      "description": "OpenWolf",
+      "tokens": 75,
+      "hash": "e401f79554a8d796",
+      "size": 297,
+      "mtimeMs": 1793523445662.0938,
+      "updatedAt": "2026-11-01T09:05:28.476Z",
+      "source": "scan",
+      "importance": 0.4522
+    },
+    "CLAUDE.md": {
+      "description": "OpenWolf",
+      "tokens": 99,
+      "hash": "074d6b42b583729a",
+      "size": 395,
+      "mtimeMs": 1793523445645.4963,
+      "updatedAt": "2026-11-01T09:05:28.477Z",
+      "source": "scan",
+      "importance": 0.4522
+    },
+    "dev-dist/sw.js": {
+      "description": "Copyright 2018 Google Inc. All Rights Reserved.",
+      "tokens": 825,
+      "hash": "a31a4b7a0e86a3ed",
+      "size": 2889,
+      "mtimeMs": 1783167448774.496,
+      "updatedAt": "2026-11-01T09:05:28.478Z",
+      "source": "scan",
+      "importance": 0.4522
+    },
+    "dev-dist/workbox-7e5eb42b.js": {
+      "description": "Claim any currently available clients once the service worker",
+      "tokens": 36984,
+      "hash": "a70eee40811b30f8",
+      "size": 129442,
+      "mtimeMs": 1783167448774.8032,
+      "updatedAt": "2026-11-01T09:05:28.480Z",
+      "source": "scan",
+      "importance": 0.4522
+    },
+    "eslint.config.js": {
+      "description": "ESLint flat configuration",
+      "tokens": 58,
+      "hash": "fa8e534b2d26863a",
+      "size": 201,
+      "mtimeMs": 1783167448774.929,
+      "updatedAt": "2026-11-01T09:05:28.480Z",
+      "source": "scan",
+      "importance": 0.4522
+    },
+    "find-images.mjs": {
+      "description": "Declares walk",
+      "tokens": 158,
+      "hash": "ad0e01ce2604b715",
+      "size": 589,
+      "mtimeMs": 1783167448775.0168,
+      "updatedAt": "2026-11-01T09:05:28.481Z",
+      "source": "scan",
+      "importance": 0.4522
+    },
+    "firebase-applet-config.json": {
+      "description": "",
+      "tokens": 122,
+      "hash": "cfd50dc859e40daa",
+      "size": 426,
+      "mtimeMs": 1783167448775.1028,
+      "updatedAt": "2026-11-01T09:05:28.481Z",
+      "source": "scan",
+      "importance": 1
+    },
+    "firebase-blueprint.json": {
+      "description": "",
+      "tokens": 213,
+      "hash": "2b0fbbbd8afbe8bb",
+      "size": 744,
+      "mtimeMs": 1783167448775.1975,
+      "updatedAt": "2026-11-01T09:05:28.481Z",
+      "source": "scan",
+      "importance": 0.4522
+    },
+    "firestore.rules": {
+      "description": "isSignedIn: isVerifiedEmail, existing, incoming + 4 more",
+      "tokens": 1030,
+      "hash": "3f4ea2d159622f99",
+      "size": 3859,
+      "mtimeMs": 1783167448775.2969,
+      "updatedAt": "2026-11-01T09:05:28.481Z",
+      "source": "scan",
+      "importance": 0.4522
+    },
+    "fix-svg-back.cjs": {
+      "description": "Declares fs",
+      "tokens": 274,
+      "hash": "679e5e6a8629a9f9",
+      "size": 1026,
+      "mtimeMs": 1783167448775.3984,
+      "updatedAt": "2026-11-01T09:05:28.481Z",
+      "source": "scan",
+      "importance": 0.4522
+    },
+    "fix-svg.js": {
+      "description": "Declares fs",
+      "tokens": 529,
+      "hash": "a6ea45c732425d99",
+      "size": 1851,
+      "mtimeMs": 1783167448775.4895,
+      "updatedAt": "2026-11-01T09:05:28.481Z",
+      "source": "scan",
+      "importance": 0.4522
+    },
+    "GEMINI.md": {
+      "description": "OpenWolf",
+      "tokens": 75,
+      "hash": "e401f79554a8d796",
+      "size": 297,
+      "mtimeMs": 1793523445662.6226,
+      "updatedAt": "2026-11-01T09:05:28.482Z",
+      "source": "scan",
+      "importance": 0.4522
+    },
+    "generate-icons.cjs": {
+      "description": "sharp: createIcon, main",
+      "tokens": 222,
+      "hash": "1b989da1cd86a037",
+      "size": 832,
+      "mtimeMs": 1783167448775.581,
+      "updatedAt": "2026-11-01T09:05:28.482Z",
+      "source": "scan",
+      "importance": 0.4522
+    },
+    "generate-icons.mjs": {
+      "description": "svgPath: generateIcons",
+      "tokens": 223,
+      "hash": "a4e5ad622732ab44",
+      "size": 833,
+      "mtimeMs": 1783167448775.6643,
+      "updatedAt": "2026-11-01T09:05:28.482Z",
+      "source": "scan",
+      "importance": 0.4522
+    },
+    "index.html": {
+      "description": "CikguScan OMR",
+      "tokens": 18903,
+      "hash": "f4301bf272ef8b94",
+      "size": 70899,
+      "mtimeMs": 1793523738240.7625,
+      "updatedAt": "2026-11-01T09:05:28.482Z",
+      "source": "scan",
+      "importance": 0.4522
+    },
+    "metadata.json": {
+      "description": "",
+      "tokens": 58,
+      "hash": "40973e211eaa41c1",
+      "size": 200,
+      "mtimeMs": 1783167448775.972,
+      "updatedAt": "2026-11-01T09:05:28.482Z",
+      "source": "scan",
+      "importance": 0.4522
+    },
+    "OMRImageProcessor.py": {
+      "description": "OMRImageProcessor: perspective_correction, adaptive_binarization, verify_with_ai",
+      "tokens": 1292,
+      "hash": "fd0f14217f8d20a0",
+      "size": 4522,
+      "mtimeMs": 1783167448774.244,
+      "updatedAt": "2026-11-01T09:05:28.483Z",
+      "source": "scan",
+      "symbols": [
+        {
+          "name": "OMRImageProcessor",
+          "kind": "class",
+          "startLine": 7,
+          "endLine": 111,
+          "tokens": 1080
+        },
+        {
+          "name": "OMRImageProcessor.__init__",
+          "kind": "method",
+          "startLine": 15,
+          "endLine": 22,
+          "tokens": 84
+        },
+        {
+          "name": "OMRImageProcessor.perspective_correction",
+          "kind": "method",
+          "startLine": 24,
+          "endLine": 57,
+          "tokens": 387
+        },
+        {
+          "name": "OMRImageProcessor.adaptive_binarization",
+          "kind": "method",
+          "startLine": 59,
+          "endLine": 84,
+          "tokens": 208
+        },
+        {
+          "name": "OMRImageProcessor.verify_with_ai",
+          "kind": "method",
+          "startLine": 86,
+          "endLine": 111,
+          "tokens": 351
+        }
+      ],
+      "symbolSource": "ts",
+      "importance": 0.4522
+    },
+    "package.json": {
+      "description": "Node.js package manifest",
+      "tokens": 279,
+      "hash": "45f60338e0fd9aa3",
+      "size": 974,
+      "mtimeMs": 1793523548680.8633,
+      "updatedAt": "2026-11-01T09:05:28.483Z",
+      "source": "scan",
+      "importance": 0.4522
+    },
+    "PROJECT_FLOW.md": {
+      "description": "🧭 PROJECT FLOW & LIVING ARCHITECTURE: CikguScan (OMR Smart Sheet Scanner)",
+      "tokens": 1340,
+      "hash": "2a600dd31c0f72fb",
+      "size": 5395,
+      "mtimeMs": 1793523895467.9204,
+      "updatedAt": "2026-11-01T09:05:28.483Z",
+      "source": "scan",
+      "importance": 0.4522
+    },
+    "public/test-icon.html": {
+      "description": "",
+      "tokens": 499,
+      "hash": "14bf7baf1247c003",
+      "size": 1869,
+      "mtimeMs": 1785203550376.561,
+      "updatedAt": "2026-11-01T09:05:28.483Z",
+      "source": "scan",
+      "importance": 0.4522
+    },
+    "public/test-svg.html": {
+      "description": "",
+      "tokens": 478,
+      "hash": "b129e60683a4a062",
+      "size": 1790,
+      "mtimeMs": 1783167448778.3782,
+      "updatedAt": "2026-11-01T09:05:28.484Z",
+      "source": "scan",
+      "importance": 0.4522
+    },
+    "README.md": {
+      "description": "Project documentation",
+      "tokens": 136,
+      "hash": "bf73493b85e7743c",
+      "size": 542,
+      "mtimeMs": 1783167448774.3418,
+      "updatedAt": "2026-11-01T09:05:28.484Z",
+      "source": "scan",
+      "importance": 0.4522
+    },
+    "restore.js": {
+      "description": "",
+      "tokens": 34,
+      "hash": "cff64501184bac09",
+      "size": 119,
+      "mtimeMs": 1783167448778.4656,
+      "updatedAt": "2026-11-01T09:05:28.484Z",
+      "source": "scan",
+      "importance": 0.4522
+    },
+    "ROADMAP.md": {
+      "description": "🗺️ ROADMAP PEMBANGUNAN: CikguScan (Smart OMR Sheet Scanner PWA)",
+      "tokens": 1021,
+      "hash": "67ea85380e8080d8",
+      "size": 4118,
+      "mtimeMs": 1793523912657.3467,
+      "updatedAt": "2026-11-01T09:05:28.484Z",
+      "source": "scan",
+      "importance": 0.4522
+    },
+    "security_spec.md": {
+      "description": "Security Spec",
+      "tokens": 290,
+      "hash": "0b9c40f62c6405fd",
+      "size": 1157,
+      "mtimeMs": 1783167448778.5537,
+      "updatedAt": "2026-11-01T09:05:28.484Z",
+      "source": "scan",
+      "importance": 0.4522
+    },
+    "src/App.tsx": {
+      "description": "App",
+      "tokens": 34,
+      "hash": "26753d3d5863cc82",
+      "size": 116,
+      "mtimeMs": 1783167448778.6936,
+      "updatedAt": "2026-11-01T09:05:28.484Z",
+      "source": "scan",
+      "importance": 0.6444
+    },
+    "src/firebase.ts": {
+      "description": "Exports app, db, auth, googleProvider, storage",
+      "tokens": 169,
+      "hash": "c062ef502b010330",
+      "size": 591,
+      "mtimeMs": 1783167448778.7803,
+      "updatedAt": "2026-11-01T09:05:28.484Z",
+      "source": "scan",
+      "imports": [
+        "firebase-applet-config.json"
+      ],
+      "importance": 0.6444
+    },
+    "src/index.css": {
+      "description": "Styles: 3 rules, 10 vars, 1 media queries",
+      "tokens": 1077,
+      "hash": "b21a3c6d0402f759",
+      "size": 3767,
+      "mtimeMs": 1783167448778.8782,
+      "updatedAt": "2026-11-01T09:05:28.485Z",
+      "source": "scan",
+      "importance": 0.8366
+    },
+    "src/main.ts": {
+      "description": "showInstallButton: updateStatusHeader",
+      "tokens": 56877,
+      "hash": "a3409b82f7407981",
+      "size": 199101,
+      "mtimeMs": 1793523851670.2424,
+      "updatedAt": "2026-11-01T09:05:28.487Z",
+      "source": "scan",
+      "symbols": [
+        {
+          "name": "showInstallButton",
+          "kind": "fn",
+          "startLine": 36,
+          "endLine": 43,
+          "tokens": 66
+        },
+        {
+          "name": "updateStatusHeader",
+          "kind": "fn",
+          "startLine": 169,
+          "endLine": 217,
+          "tokens": 541
+        },
+        {
+          "name": "initAppContent",
+          "kind": "fn",
+          "startLine": 581,
+          "endLine": 589,
+          "tokens": 56
+        },
+        {
+          "name": "paparAlert",
+          "kind": "fn",
+          "startLine": 591,
+          "endLine": 612,
+          "tokens": 358
+        },
+        {
+          "name": "tutupAlert",
+          "kind": "fn",
+          "startLine": 614,
+          "endLine": 617,
+          "tokens": 46
+        },
+        {
+          "name": "paparConfirm",
+          "kind": "fn",
+          "startLine": 620,
+          "endLine": 626,
+          "tokens": 103
+        },
+        {
+          "name": "tutupConfirm",
+          "kind": "fn",
+          "startLine": 628,
+          "endLine": 632,
+          "tokens": 55
+        },
+        {
+          "name": "openImageDB",
+          "kind": "fn",
+          "startLine": 648,
+          "endLine": 660,
+          "tokens": 126
+        },
+        {
+          "name": "simpanImejKeCache",
+          "kind": "fn",
+          "startLine": 662,
+          "endLine": 672,
+          "tokens": 108
+        },
+        {
+          "name": "ambilImejDariCache",
+          "kind": "fn",
+          "startLine": 674,
+          "endLine": 688,
+          "tokens": 141
+        },
+        {
+          "name": "padamImejDariCache",
+          "kind": "fn",
+          "startLine": 690,
+          "endLine": 698,
+          "tokens": 72
+        },
+        {
+          "name": "padamSemuaImejDariCache",
+          "kind": "fn",
+          "startLine": 700,
+          "endLine": 707,
+          "tokens": 64
+        },
+        {
+          "name": "muatRekodLokal",
+          "kind": "fn",
+          "startLine": 709,
+          "endLine": 752,
+          "tokens": 428
+        },
+        {
+          "name": "syncRekodKeCloud",
+          "kind": "fn",
+          "startLine": 754,
+          "endLine": 781,
+          "tokens": 308
+        },
+        {
+          "name": "deleteRekodDariCloud",
+          "kind": "fn",
+          "startLine": 783,
+          "endLine": 792,
+          "tokens": 147
+        },
+        {
+          "name": "simpanRekodLokal",
+          "kind": "fn",
+          "startLine": 794,
+          "endLine": 825,
+          "tokens": 280
+        },
+        {
+          "name": "mintaSahkanPadamSemua",
+          "kind": "fn",
+          "startLine": 827,
+          "endLine": 840,
+          "tokens": 122
+        },
+        {
+          "name": "mintaSahkanPadamSemasa",
+          "kind": "fn",
+          "startLine": 862,
+          "endLine": 880,
+          "tokens": 175
+        },
+        {
+          "name": "kemaskiniBadgeAnalisis",
+          "kind": "fn",
+          "startLine": 885,
+          "endLine": 895,
+          "tokens": 99
+        },
+        {
+          "name": "bukaModalAI",
+          "kind": "fn",
+          "startLine": 897,
+          "endLine": 905,
+          "tokens": 109
+        },
+        {
+          "name": "tutupModalAI",
+          "kind": "fn",
+          "startLine": 910,
+          "endLine": 913,
+          "tokens": 45
+        },
+        {
+          "name": "simpanAI",
+          "kind": "fn",
+          "startLine": 918,
+          "endLine": 954,
+          "tokens": 300
+        },
+        {
+          "name": "getSenaraiApiKeyFallback",
+          "kind": "fn",
+          "startLine": 957,
+          "endLine": 983,
+          "tokens": 247
+        },
+        {
+          "name": "getDaftarApiKey",
+          "kind": "fn",
+          "startLine": 985,
+          "endLine": 988,
+          "tokens": 47
+        },
+        {
+          "name": "generateContentPintar",
+          "kind": "fn",
+          "startLine": 990,
+          "endLine": 1062,
+          "tokens": 691
+        },
+        {
+          "name": "pusatkanKamera",
+          "kind": "fn",
+          "startLine": 1064,
+          "endLine": 1072,
+          "tokens": 88
+        },
+        {
+          "name": "bukaModalKelas",
+          "kind": "fn",
+          "startLine": 1104,
+          "endLine": 1127,
+          "tokens": 266
+        },
+        {
+          "name": "tutupModalKelas",
+          "kind": "fn",
+          "startLine": 1132,
+          "endLine": 1150,
+          "tokens": 180
+        },
+        {
+          "name": "simpanKelas",
+          "kind": "fn",
+          "startLine": 1155,
+          "endLine": 1197,
+          "tokens": 416
+        },
+        {
+          "name": "tutupModalRekod",
+          "kind": "fn",
+          "startLine": 1284,
+          "endLine": 1288,
+          "tokens": 44
+        }
+      ],
+      "symbolSource": "ts",
+      "skeleton": "function showInstallButton(e: any) {\nfunction updateStatusHeader() {\nfunction initAppContent() {\nfunction paparAlert(title: string, msg: string, isProAlert = false) {\nfunction tutupAlert() {\nfunction paparConfirm(title: string, msg: string, callback: any) {\nfunction tutupConfirm() {\nfunction openImageDB(): Promise<IDBDatabase> {\nasync function simpanImejKeCache(id: string, imejPenuh?: string, imejNama?: string) {\nasync function ambilImejDariCache(id: string): Promise<{ imejPenuh?: string; imejNama?: string } | null> {\nasync function padamImejDariCache(id: string) {\nasync function padamSemuaImejDariCache() {\nasync function muatRekodLokal() {\nasync function syncRekodKeCloud(rekod: any) {\nasync function deleteRekodDariCloud(id: string) {\nfunction simpanRekodLokal() {\nfunction mintaSahkanPadamSemua() {\nfunction mintaSahkanPadamSemasa() {\nfunction kemaskiniBadgeAnalisis() {\nfunction bukaModalAI() {\nfunction tutupModalAI() {\nasync function simpanAI() {\nfunction getSenaraiApiKeyFallback(): string[] {\nfunction getDaftarApiKey(): string {\nasync function generateContentPintar(customKey: string | null, reqConfig: any): Promise<any> {\nfunction pusatkanKamera() {\nfunction bukaModalKelas() {\nfunction tutupModalKelas() {\nfunction simpanKelas() {\nfunction tutupModalRekod() {",
+      "imports": [
+        "src/index.css",
+        "src/firebase.ts"
+      ],
+      "importance": 0.4522
+    },
+    "src/main.tsx": {
+      "description": "",
+      "tokens": 66,
+      "hash": "5580d48b0fec6869",
+      "size": 231,
+      "mtimeMs": 1783167448779.3262,
+      "updatedAt": "2026-11-01T09:05:28.488Z",
+      "source": "scan",
+      "imports": [
+        "src/App.tsx",
+        "src/index.css"
+      ],
+      "importance": 0.4522
+    },
+    "tsconfig.json": {
+      "description": "TypeScript configuration",
+      "tokens": 169,
+      "hash": "ffcc804d8fffd3a1",
+      "size": 591,
+      "mtimeMs": 1783167448779.4182,
+      "updatedAt": "2026-11-01T09:05:28.488Z",
+      "source": "scan",
+      "importance": 0.4522
+    },
+    "vercel.json": {
+      "description": "",
+      "tokens": 75,
+      "hash": "3641c18ab9264129",
+      "size": 261,
+      "mtimeMs": 1785203044501.408,
+      "updatedAt": "2026-11-01T09:05:28.488Z",
+      "source": "scan",
+      "importance": 0.4522
+    },
+    "vite.config.ts": {
+      "description": "Vite build configuration",
+      "tokens": 643,
+      "hash": "3e07cdd85955e7cd",
+      "size": 2251,
+      "mtimeMs": 1785202699941.6218,
+      "updatedAt": "2026-11-01T09:05:28.488Z",
+      "source": "scan",
+      "importance": 0.4522
+    },
+    "workspace/src/firebase.ts": {
+      "description": "Exports app, db",
+      "tokens": 71,
+      "hash": "309589828df65ca5",
+      "size": 246,
+      "mtimeMs": 1783167448779.7302,
+      "updatedAt": "2026-11-01T09:05:28.488Z",
+      "source": "scan",
+      "importance": 0.4522
+    }
+  },
+  "preamble": [
+    "> Project structure index. Auto-maintained by OpenWolf hooks and daemon.",
+    "> Run `openwolf scan` to generate, or wait for the first Claude Code session.",
+    "> Status: Pending initial scan"
+  ]
+}
